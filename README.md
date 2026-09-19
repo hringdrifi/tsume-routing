@@ -2,6 +2,8 @@
 
 キーボードのキー行列を配線するブラウザパズルです。Day 001 は6キー、2行×3列、5本のMCU GPIOを使います。
 
+**[ブラウザで遊ぶ](https://hringdrifi.github.io/tsume-routing/)**
+
 ![Day 001の盤面](screenshot.png)
 
 ## 起動

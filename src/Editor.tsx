@@ -20,7 +20,7 @@ export default function Editor({source,onClose,onPlay}:Props){
   })
   const valid=()=>{try{return validatePuzzle(draft)}catch(e){setError(e instanceof Error?e.message:'問題データを確認してください');return null}}
   const play=()=>{const p=valid();if(p)onPlay(p)}
-  const share=async()=>{const p=valid();if(!p)return;const url=`${location.origin}${location.pathname}#p=${encodePuzzle(p)}`;try{await navigator.clipboard.writeText(url);setCopied(true)}catch{setError('クリップボードにコピーできませんでした')}}
+  const share=async()=>{const p=valid();if(!p)return;const url=`${location.origin}${import.meta.env.BASE_URL}#p=${encodePuzzle(p)}`;try{await navigator.clipboard.writeText(url);setCopied(true)}catch{setError('クリップボードにコピーできませんでした')}}
   const download=()=>{const p=valid();if(!p)return;const href=URL.createObjectURL(new Blob([JSON.stringify(p,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=href;a.download=`${p.id}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(href),1000)}
   const importFile=async(f?:File)=>{if(!f)return;try{if(f.size>100000)throw Error('JSONが大きすぎます');const p=validatePuzzle(JSON.parse(await f.text()));setDraft(p);setSelection(null);setError('')}catch(e){setError(e instanceof Error?e.message:'JSONを読み込めませんでした')}}
   const addSwitch=()=>update(p=>{const id=`SW${Math.max(0,...p.switches.map(s=>Number(s.id.replace(/\D/g,''))||0))+1}`;p.switches.push({id,x:grid(p.board.width/2,gridDenominator),y:grid(p.board.height/2,gridDenominator),rotation:90,row:0,col:0});setSelection({kind:'switch',id})})
