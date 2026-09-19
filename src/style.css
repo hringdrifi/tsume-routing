@@ -4,3 +4,4 @@
 .editor-orientation{stroke:#e3b779;stroke-width:.7;fill:none;pointer-events:none}
 .daily-nav{display:flex;gap:4px;margin:0 0 8px}.daily-nav button{flex:1;min-width:0;background:#193233;border:1px solid #36534e;color:#c6d9cc;padding:7px 3px;font-size:10px}.daily-nav button:hover:not(:disabled){border-color:#d7af6c;color:#e7c998}
 .grid-control{display:flex;align-items:center;gap:7px}.grid-control select{background:#142a2b;border:1px solid #3c5d57;color:#d8ba86;font:11px 'DM Mono',monospace;padding:3px 5px}.grid-control b{margin-left:2px}
+.switch-hole-ring{fill:none;stroke:#a9bcb3;stroke-width:.3;pointer-events:none}.switch-hole{fill:#0a2223;stroke:#839b92;stroke-width:.3;cursor:not-allowed}.pad-drill{fill:#0a2223;stroke:#c99a57;stroke-width:.14;pointer-events:none}.pad.switch{fill:#e8bc78;stroke:#6c512d}.pad-group:hover .pad-drill{fill:#183838;stroke:#fff2c9}

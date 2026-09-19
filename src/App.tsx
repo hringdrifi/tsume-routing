@@ -9,6 +9,7 @@ import {encodePuzzle} from './lib/share'
 import Editor from './Editor'
 import {loadProgress,saveProgress} from './lib/progress'
 import {todayNumber} from './lib/daily'
+import {MX_3PIN} from './lib/mx'
 
 const other=(l:Layer):Layer=>l==='F.Cu'?'B.Cu':'F.Cu'
 const asNodes=(from:RouteNode,to:Point):RouteNode[]=>snapPath(from,to).filter(p=>!near(p,from)).map(p=>({...p,layer:from.layer}))
@@ -67,7 +68,7 @@ export default function App(){
   const onPad=(pad:typeof allPads[number],e:React.MouseEvent)=>{
     e.stopPropagation();if(tool!=='route')return
     if(!draft){setDraft([{x:pad.x,y:pad.y,layer:'F.Cu'}]);setCursor(pad);setNotice(`${pad.label} から配線中`);return}
-    if(draft[draft.length-1].layer!=='F.Cu'){setNotice('パッドへはF.Cuで接続してください');return}
+    if(draft[draft.length-1].layer!=='F.Cu'&&pad.kind!=='switch'){setNotice('このパッドへはF.Cuで接続してください');return}
     finish(pad)
   }
   const preview=draft&&cursor?asNodes(draft[draft.length-1],cursor):[]
@@ -83,12 +84,12 @@ export default function App(){
         <defs><pattern id="grid-major" width={KEY_UNIT_MM} height={KEY_UNIT_MM} patternUnits="userSpaceOnUse"><circle cx="0" cy="0" r=".22" fill="var(--grid-dot)"/></pattern><pattern id="grid-minor" width={gridStep(gridDenominator)} height={gridStep(gridDenominator)} patternUnits="userSpaceOnUse"><circle cx="0" cy="0" r=".08" fill="var(--grid-dot)"/></pattern></defs>
         <rect x="0" y="0" width={puzzle.board.width} height={puzzle.board.height} rx="2" className="pcb"/>{view.w<65&&<rect x="0" y="0" width={puzzle.board.width} height={puzzle.board.height} rx="2" fill="url(#grid-minor)"/>}<rect x="0" y="0" width={puzzle.board.width} height={puzzle.board.height} rx="2" fill="url(#grid-major)"/>
         {puzzle.keepouts.map(k=><g key={k.id}><rect className="keepout" x={k.x} y={k.y} width={k.width} height={k.height}/><text className="keepout-text" x={k.x+k.width/2} y={k.y+k.height/2}>KEEP OUT</text></g>)}
-        {puzzle.switches.map(s=><g key={s.id} transform={`translate(${s.x} ${s.y}) rotate(${s.rotation})`}><rect className="switch" x="-7" y="-7" width="14" height="14" rx="1.5"/><circle className="switch-core" r="3.2"/><path className="switch-arc" d="M-5 -5 L-2 -5 M5 -5 L5 -2"/><text className="part-label" y="-9" transform={`rotate(${-s.rotation})`}>{s.id}</text></g>)}
+        {puzzle.switches.map(s=><g key={s.id} transform={`translate(${s.x} ${s.y}) rotate(${s.rotation})`}><rect className="switch" x={-MX_3PIN.housingHalf} y={-MX_3PIN.housingHalf} width={MX_3PIN.housingHalf*2} height={MX_3PIN.housingHalf*2} rx="1.5"/><circle className="switch-hole-ring" r={MX_3PIN.centerHoleRadius+.45}/><circle className="switch-hole" r={MX_3PIN.centerHoleRadius} onClick={e=>{e.stopPropagation();setNotice(`${s.id} 中心穴は配線できません`)}}/><path className="switch-arc" d="M-5 -5 L-2 -5 M5 -5 L5 -2"/><text className="part-label" y="-9" transform={`rotate(${-s.rotation})`}>{s.id}</text></g>)}
         <g transform={`translate(${puzzle.mcu.x} ${puzzle.mcu.y})`}><rect className="mcu" x="-4" y="-13" width="16" height="26" rx="1"/><text className="mcu-label" x="4" y="-15">MCU</text><text className="mcu-chip" x="4" y="2">◈</text></g>
         {board.diodes.filter(d=>d.position).map(d=><g key={d.switchId} transform={`translate(${d.position!.x} ${d.position!.y}) rotate(${d.rotation})`} onClick={e=>{if(tool==='place'){e.stopPropagation();setSelected(d.switchId);setNotice(`${d.switchId} 選択中 · 盤面クリックで移動 · Rで回転`)}}}><rect className={`diode ${selected===d.switchId?'selected':''}`} x="-3.5" y="-1.6" width="7" height="3.2" rx=".5"/><path className="diode-symbol" d="M-1 -1 L1 0 L-1 1 Z M1 -1 L1 1"/><text className="diode-label" x="0" y="-3" transform={`rotate(${-d.rotation})`}>{d.switchId} D</text></g>)}
         {board.traces.map(t=><g key={t.id}>{routeLines(t.nodes,t.id,true)}{viaPoints(t.nodes).map((v,i)=><circle key={i} className="via" cx={v.x} cy={v.y} r="1.35"/>)}</g>)}
         {draft&&<g opacity=".72">{routeLines(displayNodes,'draft')}{viaPoints(draft).map((v,i)=><circle key={i} className="via" cx={v.x} cy={v.y} r="1.35"/>)}</g>}
-        {allPads.map(pad=><g key={pad.id} className="pad-group" onClick={e=>onPad(pad,e)}><circle className={`pad ${pad.kind}`} cx={pad.x} cy={pad.y} r="1.25"/><circle className="pad-hit" cx={pad.x} cy={pad.y} r="2.8"/><title>{pad.label}</title></g>)}
+        {allPads.map(pad=><g key={pad.id} className="pad-group" onClick={e=>onPad(pad,e)}><circle className={`pad ${pad.kind}`} cx={pad.x} cy={pad.y} r={pad.kind==='switch'?MX_3PIN.copperRadius:1.25}/>{pad.kind==='switch'&&<circle className="pad-drill" cx={pad.x} cy={pad.y} r={MX_3PIN.pinDrillRadius}/>}<circle className="pad-hit" cx={pad.x} cy={pad.y} r={pad.kind==='switch'?2.4:2.8}/><title>{pad.label}</title></g>)}
         {result&&checked.issues.map((issue,i)=><g key={i}><circle className={`issue ${issue.fatal?'fatal':'warning'}`} cx={issue.point.x} cy={issue.point.y} r="3"/><text className="issue-mark" x={issue.point.x} y={issue.point.y+.8}>!</text></g>)}
       </svg><div className="canvas-hint">ホイール: ズーム <span>·</span> 中ボタン: パン <span>·</span> Esc: 中断</div></div>
       <div className="status"><span className="status-led"/>{notice}<span className="coords">{cursor?`${cursor.x}, ${cursor.y} mm`:''}</span></div>

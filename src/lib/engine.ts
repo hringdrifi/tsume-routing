@@ -20,6 +20,9 @@ export function evaluate(p:Puzzle,state:BoardState):Result {
     if(a.layer!==b.layer){viaCount++;dsu.join(node(a,a.layer),node(b,b.layer))}
     else length+=distance(a,b)
   }}
+  // MX electrical pins are plated through holes. The center positioning hole
+  // is non-plated and is deliberately absent from the pad graph.
+  for(const pad of allPads.filter(pad=>pad.kind==='switch'))dsu.join(node(pad,'F.Cu'),node(pad,'B.Cu'))
   const groups=new Map<number,{nets:Set<string>;points:Point[]}>()
   for(const pad of allPads){const root=dsu.find(node(pad,'F.Cu'));const group=groups.get(root)??{nets:new Set<string>(),points:[]};group.nets.add(pad.net);group.points.push(pad);groups.set(root,group)}
   let shorts=0,missing=0

@@ -1,5 +1,6 @@
 import raw from '../data/day001.json'
 import type {Puzzle,Point,Pad,BoardState,Rotation} from './model'
+import {mxPin} from './mx'
 
 const rotations = [0,90,180,270]
 export function validatePuzzle(input:unknown):Puzzle {
@@ -31,8 +32,8 @@ export function pads(p:Puzzle,state:BoardState):Pad[] {
   const out:Pad[]=[]
   for(const s of p.switches){
     const at={x:s.x,y:s.y}
-    out.push({...offset(at,{x:-4,y:5},s.rotation),id:`${s.id}:col`,label:`${s.id} COL${s.col}`,net:`COL${s.col}`,kind:'switch'})
-    out.push({...offset(at,{x:4,y:5},s.rotation),id:`${s.id}:link`,label:`${s.id} diode`,net:`LINK:${s.id}`,kind:'switch'})
+    out.push({...mxPin(at,1,s.rotation),id:`${s.id}:col`,label:`${s.id} pin 1 · COL${s.col}`,net:`COL${s.col}`,kind:'switch'})
+    out.push({...mxPin(at,2,s.rotation),id:`${s.id}:link`,label:`${s.id} pin 2 · diode`,net:`LINK:${s.id}`,kind:'switch'})
     const d=state.diodes.find(d=>d.switchId===s.id)
     if(d?.position){
       const left=offset(d.position,{x:-3,y:0},d.rotation),right=offset(d.position,{x:3,y:0},d.rotation)
