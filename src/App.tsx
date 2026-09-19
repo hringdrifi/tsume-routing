@@ -19,6 +19,7 @@ export default function App(){
   const [board,setBoard]=useState<BoardState>(()=>loadProgress(puzzle)??initialState(puzzle))
   const [past,setPast]=useState<BoardState[]>([]),[future,setFuture]=useState<BoardState[]>([])
   const [tool,setTool]=useState<Tool>('route'),[selected,setSelected]=useState<string|null>(null)
+  const [routeLayer,setRouteLayer]=useState<Layer>('F.Cu')
   const [draft,setDraft]=useState<RouteNode[]|null>(null),[cursor,setCursor]=useState<Point|null>(null)
   const [result,setResult]=useState(false),[notice,setNotice]=useState('パッドをクリックして配線を開始')
   const [editorOpen,setEditorOpen]=useState(false)
@@ -41,11 +42,18 @@ export default function App(){
     const trace:Trace={id:`T${++seq.current}`,nodes}
     commit({...board,traces:[...board.traces,trace]});setDraft(null);setNotice(`${trace.id} を追加`)
   }
-  const addVia=()=>{
-    if(!draft||!cursor){setNotice('配線中にVでビアを配置できます');return}
-    if(!inside(puzzle,cursor))return
-    const tail=draft[draft.length-1],path=asNodes(tail,cursor),at=path.at(-1)??tail
-    setDraft([...draft,...path,{...at,layer:other(at.layer)}]);setNotice(`${other(at.layer)} に切り替え`)
+  const changeLayer=(target?:Layer)=>{
+    if(!draft){if(target){setRouteLayer(target);setNotice(`${target} で配線を開始します`)}else setNotice('配線中にVでビアを配置できます');return}
+    const tail=draft[draft.length-1],next=target??other(tail.layer)
+    if(next===tail.layer)return
+    // A plated MX pin already reaches both copper layers; switching at its
+    // starting point needs no via and should not cost a point.
+    if(draft.length===1&&allPads.some(p=>p.kind==='switch'&&near(p,tail))){
+      setDraft([{...tail,layer:next}]);setRouteLayer(next);setNotice(`${next} から配線中`);return
+    }
+    if(!cursor||!inside(puzzle,cursor)){setNotice('盤面上でビアを配置してください');return}
+    const path=asNodes(tail,cursor),at=path.at(-1)??tail
+    setDraft([...draft,...path,{...at,layer:next}]);setRouteLayer(next);setNotice(`ビアを配置 · ${next} に切り替え`)
   }
   const rotateDiode=()=>{
     if(!selected)return
@@ -57,7 +65,7 @@ export default function App(){
     if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?redo():undo();return}
     if(e.key==='Escape'){setDraft(null);setSelected(null);setNotice('操作を中断');return}
     if(e.key==='Backspace'&&draft){e.preventDefault();setDraft(draft.length>1?draft.slice(0,-1):null);return}
-    if(e.key.toLowerCase()==='v'){e.preventDefault();addVia()}
+    if(e.key.toLowerCase()==='v'){e.preventDefault();changeLayer()}
     if(e.key.toLowerCase()==='r'&&selected){e.preventDefault();rotateDiode()}
   };window.addEventListener('keydown',handler);return()=>window.removeEventListener('keydown',handler)})
   const onBoardClick=(e:React.MouseEvent<SVGSVGElement>)=>{
@@ -67,7 +75,7 @@ export default function App(){
   }
   const onPad=(pad:typeof allPads[number],e:React.MouseEvent)=>{
     e.stopPropagation();if(tool!=='route')return
-    if(!draft){setDraft([{x:pad.x,y:pad.y,layer:'F.Cu'}]);setCursor(pad);setNotice(`${pad.label} から配線中`);return}
+    if(!draft){if(routeLayer==='B.Cu'&&pad.kind!=='switch'){setNotice('このパッドはF.Cuから配線してください');return}setDraft([{x:pad.x,y:pad.y,layer:routeLayer}]);setCursor(pad);setNotice(`${pad.label} から ${routeLayer} で配線中`);return}
     if(draft[draft.length-1].layer!=='F.Cu'&&pad.kind!=='switch'){setNotice('このパッドへはF.Cuで接続してください');return}
     finish(pad)
   }
@@ -75,7 +83,7 @@ export default function App(){
   const displayNodes=draft?[...draft,...preview]:[]
   const viaPoints=(nodes:RouteNode[])=>nodes.slice(1).filter((n,i)=>n.layer!==nodes[i].layer)
   const routeLines=(nodes:RouteNode[],id:string,interactive=false)=>traceSegments(nodes).map((s,i)=><line key={`${id}-${i}`} x1={s.a.x} y1={s.a.y} x2={s.b.x} y2={s.b.y} className={`trace ${s.layer==='F.Cu'?'front':'back'} ${interactive?'existing':'preview'}`} onClick={interactive&&tool==='delete'?(e)=>{e.stopPropagation();commit({...board,traces:board.traces.filter(t=>t.id!==id)});setNotice(`${id} を削除`)}:undefined}/> )
-  const liveLayer=draft?.at(-1)?.layer??'F.Cu'
+  const liveLayer=draft?.at(-1)?.layer??routeLayer
   const dayNumber=Number(puzzle.id.match(/^day(\d+)$/)?.[1]??0)
   const navigateDay=(n:number)=>{location.href=`${import.meta.env.BASE_URL}?puzzle=day${String(n).padStart(3,'0')}`}
   return <div className="app"><header><div className="brand"><span className="brand-mark">◈</span><div><strong>詰配線</strong><small>TSUME ROUTING <b>/</b> A KEYBOARD PCB PUZZLE</small></div></div><div className="header-right"><button className="open-editor" onClick={()=>setEditorOpen(true)}>問題を作る</button><span className="day">{puzzle.id.toUpperCase()}</span><span className="score">SCORE <b>{checked.score}</b></span></div></header>
@@ -97,10 +105,10 @@ export default function App(){
     <aside><div className="panel-title">WORKBENCH <span>{puzzle.id.toUpperCase()}</span></div><h2>{puzzle.title}</h2><p className="panel-intro">{puzzle.switches.length}つのキーを{puzzle.matrix.rows}×{puzzle.matrix.cols}の行列へ。各キーのダイオードを置き、{puzzle.mcu.pins.length}本のGPIOまで配線してください。</p>{dayNumber>0&&<div className="daily-nav"><button disabled={dayNumber<=1} onClick={()=>navigateDay(dayNumber-1)}>← 前の問題</button><button onClick={()=>navigateDay(todayNumber())}>今日の問題</button><button disabled={dayNumber>=todayNumber()} onClick={()=>navigateDay(dayNumber+1)}>次の問題 →</button></div>}
       <div className="section-label">TOOLS</div><div className="tool-row"><button className={tool==='route'?'active':''} onClick={()=>{setTool('route');setSelected(null)}}>⌁ <span>ROUTE</span></button><button className={tool==='place'?'active':''} onClick={()=>{setTool('place');setDraft(null)}}>◇ <span>DIODE</span></button><button className={tool==='delete'?'active':''} onClick={()=>{setTool('delete');setDraft(null)}}>⌫ <span>DELETE</span></button></div>
       <div className="section-label">DIODE INVENTORY <span>{board.diodes.filter(d=>d.position).length} / {board.diodes.length}</span></div><div className="inventory">{board.diodes.map(d=><button key={d.switchId} className={selected===d.switchId?'picked':''} onClick={()=>{setTool('place');setSelected(d.switchId);setDraft(null);setNotice(`${d.switchId} を盤面に配置 · Rで回転`)}}>{d.switchId}<span>{d.position?'●':'◇'}</span></button>)}</div><button className="secondary full" onClick={rotateDiode} disabled={!selected}>↻ ダイオードを回転 <kbd>R</kbd></button>
-      <div className="section-label">ROUTING</div><div className="layer-box"><span className={`layer-swatch ${liveLayer==='F.Cu'?'front':'back'}`}/><strong>{liveLayer}</strong><span>現在のレイヤー</span></div><div className="action-row"><button className="secondary" onClick={addVia}>⊙ VIA <kbd>V</kbd></button><button className="secondary" onClick={undo} disabled={!past.length}>↶ UNDO</button><button className="secondary" onClick={redo} disabled={!future.length}>↷ REDO</button></div>
+      <div className="section-label">ROUTING</div><div className="layer-box"><span className={`layer-swatch ${liveLayer==='F.Cu'?'front':'back'}`}/><strong>{liveLayer}</strong><span>現在のレイヤー</span></div><div className="layer-picker" role="group" aria-label="配線レイヤー">{(['F.Cu','B.Cu'] as const).map(layer=><button key={layer} type="button" className={liveLayer===layer?'active':''} aria-pressed={liveLayer===layer} onClick={()=>changeLayer(layer)}><span className={`layer-swatch ${layer==='F.Cu'?'front':'back'}`}/>{layer}</button>)}</div><div className="action-row"><button className="secondary" onClick={()=>changeLayer()}>⊙ VIA <kbd>V</kbd></button><button className="secondary" onClick={undo} disabled={!past.length}>↶ UNDO</button><button className="secondary" onClick={redo} disabled={!future.length}>↷ REDO</button></div>
       <div className="section-label">RULES</div><div className="rules"><div><span>未接続・ショート</span><b>−10</b></div><div><span>キープアウト</span><b>−5</b></div><div><span>北向きスイッチ</span><b>−3</b></div><div><span>ビア</span><b>−1</b></div></div><p className="direction">DIODE DIRECTION <b>{puzzle.matrix.diodeDirection}</b></p>
     </aside></main>
-    <footer><button className="reset" onClick={()=>{commit(initialState(puzzle));setDraft(null);setSelected(null);setNotice('盤面をリセット')}}>RESET</button><div className="footer-note">PAD → CLICK TO ROUTE <span>·</span> V TO CHANGE LAYER</div><button className="check" onClick={()=>{setResult(true);setNotice(checked.clear?'CLEAR!':'問題箇所を盤面に表示しています')}}>CHECK / SUBMIT <span>→</span></button></footer>
+    <footer><button className="reset" onClick={()=>{commit(initialState(puzzle));setDraft(null);setSelected(null);setNotice('盤面をリセット')}}>RESET</button><div className="footer-note">SELECT F.Cu / B.Cu → CLICK PAD <span>·</span> V TO PLACE VIA</div><button className="check" onClick={()=>{setResult(true);setNotice(checked.clear?'CLEAR!':'問題箇所を盤面に表示しています')}}>CHECK / SUBMIT <span>→</span></button></footer>
     {result&&<div className="result-backdrop" onClick={()=>setResult(false)}><div className="result-card" onClick={e=>e.stopPropagation()}><button className="close" onClick={()=>setResult(false)}>×</button><div className="eyebrow">{puzzle.id.toUpperCase()} / RESULT</div><h2 className={checked.clear?'clear':'incomplete'}>{checked.clear?'CLEAR':'NOT YET'}</h2><div className="total"><span>TOTAL SCORE</span><strong>{checked.score}</strong></div><div className="result-grid"><div>接続エラー <b>{checked.missing+checked.shorts}</b></div><div>キープアウト <b>{checked.keepout}</b></div><div>ビア <b>{checked.viaCount}</b></div><div>配線長 <b>{checked.length.toFixed(1)} mm</b></div></div>{checked.issues.length>0&&<div className="issue-list">{checked.issues.map((issue,i)=><p key={i} className={issue.fatal?'bad':'warn'}>{issue.message}</p>)}</div>}<button className="continue" onClick={()=>setResult(false)}>盤面に戻る</button></div></div>}
     {editorOpen&&<Editor source={puzzle} onClose={()=>setEditorOpen(false)} onPlay={next=>{setEditorOpen(false);setPuzzle(next);setBoard(initialState(next));setPast([]);setFuture([]);setDraft(null);setSelected(null);setView({x:0,y:0,w:next.board.width,h:next.board.height});location.hash=`p=${encodePuzzle(next)}`}}/>}
   </div>
