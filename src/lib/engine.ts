@@ -40,7 +40,7 @@ export function evaluate(p:Puzzle,state:BoardState):Result {
     for(const t of state.traces)for(let i=1;i<t.nodes.length;i++)if(t.nodes[i].layer!==t.nodes[i-1].layer&&pointInRect(t.nodes[i],k)){keepout++;issues.push({kind:'keepout',message:`ビアが ${k.id} に侵入`,point:t.nodes[i],fatal:false})}
     for(const d of state.diodes)if(d.position&&pointInRect(d.position,k)){keepout++;issues.push({kind:'keepout',message:`${d.switchId} のダイオードが ${k.id} に侵入`,point:d.position,fatal:false})}
   }
-  const north=p.switches.filter(s=>s.rotation===p.northRotation).length
+  const north=p.switches.filter(s=>(state.switchRotations?.[s.id]??s.rotation)===p.northRotation).length
   const score=p.scoring.base+(missing+shorts)*p.scoring.connectionError+keepout*p.scoring.keepoutViolation+north*p.scoring.northSwitch+viaCount*p.scoring.via
   return {clear:missing===0&&shorts===0,score,viaCount,length,issues,missing,shorts,keepout,north}
 }

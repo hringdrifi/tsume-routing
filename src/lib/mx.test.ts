@@ -2,6 +2,7 @@ import {expect,it} from 'vitest'
 import {MX_3PIN,mxPin} from './mx'
 import {day001,pads} from './puzzle'
 import {initialState} from './model'
+import {grid} from './geometry'
 
 it('places the two electrical pins relative to the MX center hole',()=>{
   expect(MX_3PIN.centerHoleRadius).toBe(2)
@@ -14,4 +15,18 @@ it('keeps the center hole out of the electrical graph',()=>{
   const electrical=pads(day001,initialState(day001)).filter(p=>p.kind==='switch'&&p.id.startsWith(s.id+':'))
   expect(electrical).toHaveLength(2)
   expect(electrical.some(p=>p.x===s.x&&p.y===s.y)).toBe(false)
+})
+it('snaps both MX electrical pins to the fixed 1/48u routing grid',()=>{
+  const state=initialState(day001)
+  for(const rotation of [0,90,180,270] as const){
+    state.switchRotations.SW1=rotation
+    for(const pad of pads(day001,state).filter(p=>p.kind==='switch'&&p.id.startsWith('SW1:'))){
+      expect(grid(pad.x,48)).toBe(pad.x)
+      expect(grid(pad.y,48)).toBe(pad.y)
+      const index=pad.id.endsWith(':col')?1:2
+      const exact=mxPin(day001.switches[0],index,rotation)
+      expect(Math.abs(pad.x-exact.x)).toBeLessThanOrEqual(0.198438)
+      expect(Math.abs(pad.y-exact.y)).toBeLessThanOrEqual(0.198438)
+    }
+  }
 })

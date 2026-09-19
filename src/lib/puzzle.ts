@@ -1,6 +1,7 @@
 import raw from '../data/day001.json'
 import type {Puzzle,Point,Pad,BoardState,Rotation} from './model'
 import {mxPin} from './mx'
+import {grid} from './geometry'
 
 const rotations = [0,90,180,270]
 export function validatePuzzle(input:unknown):Puzzle {
@@ -32,8 +33,10 @@ export function pads(p:Puzzle,state:BoardState):Pad[] {
   const out:Pad[]=[]
   for(const s of p.switches){
     const at={x:s.x,y:s.y}
-    out.push({...mxPin(at,1,s.rotation),id:`${s.id}:col`,label:`${s.id} pin 1 · COL${s.col}`,net:`COL${s.col}`,kind:'switch'})
-    out.push({...mxPin(at,2,s.rotation),id:`${s.id}:link`,label:`${s.id} pin 2 · diode`,net:`LINK:${s.id}`,kind:'switch'})
+    const rotation=state.switchRotations?.[s.id]??s.rotation
+    const pin=(index:1|2)=>{const exact=mxPin(at,index,rotation);return {x:grid(exact.x,48),y:grid(exact.y,48)}}
+    out.push({...pin(1),id:`${s.id}:col`,label:`${s.id} pin 1 · COL${s.col}`,net:`COL${s.col}`,kind:'switch'})
+    out.push({...pin(2),id:`${s.id}:link`,label:`${s.id} pin 2 · diode`,net:`LINK:${s.id}`,kind:'switch'})
     const d=state.diodes.find(d=>d.switchId===s.id)
     if(d?.position){
       const left=offset(d.position,{x:-3,y:0},d.rotation),right=offset(d.position,{x:3,y:0},d.rotation)
