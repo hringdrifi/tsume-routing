@@ -1,8 +1,8 @@
 import type {Puzzle,Rotation} from './model'
 import {day001,validatePuzzle} from './puzzle'
 
-// Daily Route 001 starts on 2026-09-22 in Japan.
-const FIRST_DAY=Date.UTC(2026,8,22)
+// Daily Route 001 starts on 2026-09-21 in Japan.
+const FIRST_DAY=Date.UTC(2026,8,21)
 export const DAILY_COUNT=100
 
 type Key={x:number;y:number;row:number;col:number;rotation:Rotation}

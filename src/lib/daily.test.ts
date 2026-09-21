@@ -3,8 +3,8 @@ import {DAILY_COUNT,dailyPuzzle,lastAvailableDay,todayNumber} from './daily'
 import {day001} from './puzzle'
 
 it('maps the current launch day in Japan to Day 001',()=>{
-  expect(todayNumber(new Date('2026-09-21T15:00:00Z'))).toBe(1)
-  expect(todayNumber(new Date('2026-09-22T15:00:00Z'))).toBe(2)
+  expect(todayNumber(new Date('2026-09-20T15:00:00Z'))).toBe(1)
+  expect(todayNumber(new Date('2026-09-21T15:00:00Z'))).toBe(2)
 })
 it('creates one hundred fixed, varied daily puzzles',()=>{
   expect(dailyPuzzle(1)).toEqual(day001)
@@ -36,7 +36,7 @@ it('keeps keepouts clear of every MCU pin pad',()=>{
   }
 })
 it('limits normal navigation to today and opens the prepared set in debug mode',()=>{
-  const now=new Date('2026-09-21T15:00:00Z')
+  const now=new Date('2026-09-20T15:00:00Z')
   expect(lastAvailableDay(now)).toBe(1)
   expect(lastAvailableDay(now,true)).toBe(DAILY_COUNT)
 })
