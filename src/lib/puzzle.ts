@@ -1,7 +1,7 @@
 import raw from '../data/day001.json'
 import type {Puzzle,Point,Pad,BoardState,Rotation} from './model'
 import {mxPin} from './mx'
-import {grid} from './geometry'
+import {grid,ROUTING_GRID} from './geometry'
 
 const rotations = [0,90,180,270]
 export function validatePuzzle(input:unknown):Puzzle {
@@ -31,20 +31,21 @@ const rotate=(pt:Point,r:Rotation):Point=>r===0?pt:r===90?{x:-pt.y,y:pt.x}:r===1
 const offset=(at:Point,delta:Point,r:Rotation):Point=>{const d=rotate(delta,r);return {x:at.x+d.x,y:at.y+d.y}}
 export function pads(p:Puzzle,state:BoardState):Pad[] {
   const out:Pad[]=[]
+  const snapPad=(point:Point):Point=>({x:grid(point.x,ROUTING_GRID),y:grid(point.y,ROUTING_GRID)})
   for(const s of p.switches){
     const at={x:s.x,y:s.y}
     const rotation=state.switchRotations?.[s.id]??s.rotation
-    const pin=(index:1|2)=>{const exact=mxPin(at,index,rotation);return {x:grid(exact.x,48),y:grid(exact.y,48)}}
+    const pin=(index:1|2)=>snapPad(mxPin(at,index,rotation))
     out.push({...pin(1),id:`${s.id}:col`,label:`${s.id} pin 1 · COL${s.col}`,net:`COL${s.col}`,kind:'switch'})
     out.push({...pin(2),id:`${s.id}:link`,label:`${s.id} pin 2 · diode`,net:`LINK:${s.id}`,kind:'switch'})
     const d=state.diodes.find(d=>d.switchId===s.id)
     if(d?.position){
       const left=offset(d.position,{x:-3,y:0},d.rotation),right=offset(d.position,{x:3,y:0},d.rotation)
       const switchSide=p.matrix.diodeDirection==='COL2ROW'?'anode':'cathode'
-      out.push({...left,id:`${s.id}:A`,label:`${s.id} A`,net:switchSide==='anode'?`LINK:${s.id}`:`ROW${s.row}`,kind:'diode'})
-      out.push({...right,id:`${s.id}:K`,label:`${s.id} K`,net:switchSide==='cathode'?`LINK:${s.id}`:`ROW${s.row}`,kind:'diode'})
+      out.push({...snapPad(left),id:`${s.id}:A`,label:`${s.id} A`,net:switchSide==='anode'?`LINK:${s.id}`:`ROW${s.row}`,kind:'diode'})
+      out.push({...snapPad(right),id:`${s.id}:K`,label:`${s.id} K`,net:switchSide==='cathode'?`LINK:${s.id}`:`ROW${s.row}`,kind:'diode'})
     }
   }
-  p.mcu.pins.forEach((pin,i)=>out.push({x:p.mcu.x-7,y:p.mcu.y-8+i*4,id:`MCU:${pin.number}`,label:`MCU pin ${pin.number} · ${pin.role}`,net:pin.role,kind:'mcu'}))
+  p.mcu.pins.forEach((pin,i)=>out.push({...snapPad({x:p.mcu.x-7,y:p.mcu.y-8+i*4}),id:`MCU:${pin.number}`,label:`MCU pin ${pin.number} · ${pin.role}`,net:pin.role,kind:'mcu'}))
   return out
 }

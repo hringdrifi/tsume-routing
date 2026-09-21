@@ -19,6 +19,7 @@ export function snapPath(from:Point,to:Point):Point[]{
 export const KEY_UNIT_MM=19.05
 export type GridDenominator=12|24|48
 export const GRID_OPTIONS:GridDenominator[]=[48,24,12]
+export const ROUTING_GRID=24 as const
 export const gridStep=(denominator:GridDenominator)=>KEY_UNIT_MM/denominator
 export const grid=(v:number,denominator:GridDenominator)=>Number((Math.round(v/gridStep(denominator))*gridStep(denominator)).toFixed(6))
 export const pointKey=(p:Point,layer:string)=>`${layer}:${p.x.toFixed(5)},${p.y.toFixed(5)}`

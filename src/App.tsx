@@ -4,7 +4,7 @@ import {initialState} from './lib/model'
 import {day001,inside,pads} from './lib/puzzle'
 import {puzzleFromLocation} from './lib/share'
 import {evaluate} from './lib/engine'
-import {grid,gridStep,KEY_UNIT_MM,near,snapPath,traceSegments} from './lib/geometry'
+import {grid,gridStep,KEY_UNIT_MM,near,ROUTING_GRID,snapPath,traceSegments} from './lib/geometry'
 import {encodePuzzle} from './lib/share'
 import Editor from './Editor'
 import {loadProgress,saveProgress} from './lib/progress'
@@ -14,7 +14,6 @@ import {ratsnest} from './lib/ratsnest'
 import {compactTraces,replaceRoute} from './lib/traces'
 
 const other=(l:Layer):Layer=>l==='F.Cu'?'B.Cu':'F.Cu'
-const ROUTING_GRID=24 as const
 const MIN_VIEW_WIDTH=28
 const MIN_VIEW_HEIGHT=19
 const asNodes=(from:RouteNode,to:Point):RouteNode[]=>snapPath(from,to).filter(p=>!near(p,from)).map(p=>({...p,layer:from.layer}))

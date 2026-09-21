@@ -9,9 +9,9 @@ function solved():BoardState{
   const state:BoardState={diodes:[{switchId:'SW1',position:{x:24,y:12},rotation:0}],traces:[],switchRotations:{SW1:90}}
   const byId=Object.fromEntries(pads(puzzle,state).map(p=>[p.id,p]))
   state.traces=[
-    route('col',[byId['SW1:col'],{x:5,y:8},{x:5,y:41},{x:36,y:41},byId['MCU:2']]),
-    route('link',[byId['SW1:link'],{x:18,y:16},byId['SW1:A']]),
-    route('row',[byId['SW1:K'],{x:28,y:5},{x:45,y:5},{x:45,y:17},byId['MCU:1']])
+    route('col',[byId['SW1:col'],byId['MCU:2']]),
+    route('link',[byId['SW1:link'],byId['SW1:A']]),
+    route('row',[byId['SW1:K'],byId['MCU:1']])
   ]
   return state
 }
