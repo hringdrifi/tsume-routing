@@ -23,6 +23,6 @@ export function connectedComponents(allPads:Pad[],state:BoardState):Map<string,n
     const a=trace.nodes[i-1],b=trace.nodes[i]
     if(a.layer!==b.layer)dsu.join(node(a,a.layer),node(b,b.layer))
   }
-  for(const pad of allPads.filter(pad=>pad.kind==='switch'))dsu.join(node(pad,'F.Cu'),node(pad,'B.Cu'))
+  for(const pad of allPads.filter(pad=>pad.kind!=='diode'))dsu.join(node(pad,'F.Cu'),node(pad,'B.Cu'))
   return new Map(allPads.map(pad=>[pad.id,dsu.find(node(pad,'F.Cu'))]))
 }

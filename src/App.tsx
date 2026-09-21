@@ -171,9 +171,9 @@ export default function App(){
     if(!draft){if(target){setRouteLayer(target);setNotice(`${target} で配線を開始します`)}else setNotice('配線中にVでビアを配置できます');return}
     const tail=draft[draft.length-1],next=target??other(tail.layer)
     if(next===tail.layer)return
-    // A plated MX pin already reaches both copper layers; switching at its
+    // A plated through-hole pad already reaches both copper layers; switching at its
     // starting point needs no via and should not cost a point.
-    if(draft.length===1&&allPads.some(p=>p.kind==='switch'&&near(p,tail))){
+    if(draft.length===1&&allPads.some(p=>p.kind!=='diode'&&near(p,tail))){
       setDraft([{...tail,layer:next}]);setRouteLayer(next);setNotice(`${next} から配線中`);return
     }
     if(!cursor||!inside(puzzle,cursor)){setNotice('盤面上でビアを配置してください');return}
@@ -215,8 +215,8 @@ export default function App(){
     if(pad.kind==='switch'){setSelected(null);setSelectedSwitch(pad.id.split(':')[0])}
     if(pad.kind==='diode'){setSelectedSwitch(null);setSelected(pad.id.split(':')[0])}
     if(tool!=='route')return
-    if(!draft){if(routeLayer==='B.Cu'&&pad.kind!=='switch'){setNotice('このパッドはF.Cuから配線してください');return}setDraft([{x:pad.x,y:pad.y,layer:routeLayer}]);setCursor(pad);setNotice(`${pad.label} から ${routeLayer} で配線中`);return}
-    if(draft[draft.length-1].layer!=='F.Cu'&&pad.kind!=='switch'){setNotice('このパッドへはF.Cuで接続してください');return}
+    if(!draft){if(routeLayer==='B.Cu'&&pad.kind==='diode'){setNotice('このパッドはF.Cuから配線してください');return}setDraft([{x:pad.x,y:pad.y,layer:routeLayer}]);setCursor(pad);setNotice(`${pad.label} から ${routeLayer} で配線中`);return}
+    if(draft[draft.length-1].layer!=='F.Cu'&&pad.kind==='diode'){setNotice('このパッドへはF.Cuで接続してください');return}
     finish(pad)
   }
   const preview=draft&&cursor?asNodes(draft[draft.length-1],cursor):[]
@@ -247,7 +247,7 @@ export default function App(){
         <g transform={`translate(${puzzle.mcu.x} ${puzzle.mcu.y})`}><rect className="mcu" x="-4" y="-13" width="16" height="26" rx="1"/><text className="mcu-label" x="4" y="-15">MCU</text></g>
         {board.traces.map(t=><g key={t.id}>{routeLines(t.nodes,t.id,true)}{viaPoints(t.nodes).map((v,i)=><circle key={i} className="via" cx={v.x} cy={v.y} r="1.35"/>)}</g>)}
         {draft&&<g opacity=".72" pointerEvents="none">{routeLines(displayNodes,'draft')}{viaPoints(draft).map((v,i)=><circle key={i} className="via" cx={v.x} cy={v.y} r="1.35"/>)}</g>}
-        {allPads.map(pad=><g key={pad.id} className="pad-group" onClick={e=>onPad(pad,e)}><circle className={`pad ${pad.kind}`} cx={pad.x} cy={pad.y} r={pad.kind==='switch'?MX_3PIN.copperRadius:1.25}/>{pad.kind==='switch'&&<circle className="pad-drill" cx={pad.x} cy={pad.y} r={MX_3PIN.pinDrillRadius}/>}<circle className="pad-hit" cx={pad.x} cy={pad.y} r={pad.kind==='switch'?2.4:2.8}/><title>{pad.label}</title></g>)}
+        {allPads.map(pad=><g key={pad.id} className="pad-group" onClick={e=>onPad(pad,e)}><circle className={`pad ${pad.kind}`} cx={pad.x} cy={pad.y} r={pad.kind==='switch'?MX_3PIN.copperRadius:1.4}/>{pad.kind!=='diode'&&<circle className="pad-drill" cx={pad.x} cy={pad.y} r={pad.kind==='switch'?MX_3PIN.pinDrillRadius:.55}/>}<circle className="pad-hit" cx={pad.x} cy={pad.y} r={pad.kind==='switch'?2.4:2.8}/><title>{pad.label}</title></g>)}
         {puzzle.mcu.pins.map((pin,i)=><text key={pin.number} className="mcu-pin-label" x={puzzle.mcu.x+4} y={puzzle.mcu.y-8+i*4}>{pin.role}</text>)}
         {result&&checked.issues.map((issue,i)=><g key={i}><circle className={`issue ${issue.fatal?'fatal':'warning'}`} cx={issue.point.x} cy={issue.point.y} r="3"/><text className="issue-mark" x={issue.point.x} y={issue.point.y+.8}>!</text></g>)}
       </svg><div className="canvas-hint"><span className="desktop-hint">ホイール: ズーム <span>·</span> 中ボタン: パン</span><span className="touch-hint">1本指: パン <span>·</span> 2本指: 拡大・縮小 <span>·</span> タップ: 操作</span> <span>·</span> Esc: 中断</div></div>
