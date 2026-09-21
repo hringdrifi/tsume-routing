@@ -25,6 +25,14 @@ it('replaces a branch route when its source and destination traces match',()=>{
   expect(replaceRoute([source,destination,old],next)).toEqual({traces:[source,destination,next],replaced:1})
 })
 
+it('replaces a route when reconnecting through a joined trace network',()=>{
+  const sourceA=trace('source-a',[[0,0],[5,0]])
+  const sourceB=trace('source-b',[[5,0],[10,0]])
+  const old=trace('old',[[2,0],[20,5]])
+  const next=trace('new',[[8,0],[20,5]])
+  expect(replaceRoute([sourceA,sourceB,old],next)).toEqual({traces:[sourceA,sourceB,next],replaced:1})
+})
+
 it('keeps a route that has an attached branch',()=>{
   const old=trace('old',[[1,1],[2,1],[3,3]])
   const branch=trace('branch',[[2,1],[5,5]])
