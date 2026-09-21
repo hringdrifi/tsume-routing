@@ -12,6 +12,7 @@ import {isDebugMode,lastAvailableDay,todayNumber} from './lib/daily'
 import {MX_3PIN} from './lib/mx'
 import {ratsnest} from './lib/ratsnest'
 import {compactTraces,replaceRoute} from './lib/traces'
+import {xIntentUrl,xShareText} from './lib/x-share'
 import './fixed-footer.css'
 
 const other=(l:Layer):Layer=>l==='F.Cu'?'B.Cu':'F.Cu'
@@ -239,6 +240,34 @@ export default function App(){
   const debug=isDebugMode()
   const latestDay=lastAvailableDay(new Date(),debug)
   const navigateDay=(n:number)=>{location.href=`${import.meta.env.BASE_URL}?${debug?'debug=1&':''}puzzle=day${String(n).padStart(3,'0')}`}
+  const copyWiringImage=useCallback(async()=>{
+    if(!navigator.clipboard?.write||typeof ClipboardItem==='undefined'){setNotice('このブラウザは画像のクリップボードコピーに対応していません');return}
+    const source=svg.current
+    if(!source){setNotice('配線画像を作成できませんでした');return}
+    try{
+      const drawing=source.cloneNode(true) as SVGSVGElement
+      drawing.setAttribute('xmlns','http://www.w3.org/2000/svg')
+      drawing.setAttribute('viewBox',`0 0 ${puzzle.board.width} ${puzzle.board.height}`)
+      drawing.setAttribute('width','1600');drawing.setAttribute('height',String(Math.round(1600*puzzle.board.height/puzzle.board.width)))
+      drawing.querySelectorAll('.pad-hit,.issue,.issue-mark').forEach(node=>node.remove())
+      const style=document.createElementNS('http://www.w3.org/2000/svg','style')
+      style.textContent=`svg{background:#0d2525;--board:#163635;--grid-dot:#3a5f5c;--layer-front:#e5ab56;--layer-back:#6eb8d9}.pcb{fill:var(--board);stroke:#c39e68;stroke-width:.4}.keepout{fill:#ad594b25;stroke:#b76a5b;stroke-width:.25;stroke-dasharray:1.2 1.2}.keepout-text{font:2px monospace;fill:#c17869;text-anchor:middle}.switch{fill:#163334;stroke:#91a7a2;stroke-width:.38}.switch-hole-ring{fill:none;stroke:#a9bcb3;stroke-width:.3}.switch-hole{fill:#0a2223;stroke:#839b92;stroke-width:.3}.part-label{fill:#d7dfd1;font:2.4px monospace;text-anchor:middle}.mcu{fill:#192628;stroke:#b7bdb2;stroke-width:.4}.mcu-label{fill:#dfbb82;font:2.3px monospace;text-anchor:middle}.diode{fill:#3d3e37;stroke:#e8c47e;stroke-width:.4}.diode-symbol{fill:#e9c380;stroke:#e9c380;stroke-width:.2}.diode-label{fill:#dfb777;font:1.8px monospace;text-anchor:middle}.trace{fill:none;stroke-width:.85;stroke-linecap:round;stroke-linejoin:round}.trace.front{stroke:var(--layer-front)}.trace.back{stroke:var(--layer-back)}.via{fill:#152e30;stroke:#eed6ad;stroke-width:.55}.pad{fill:#ffe0a7;stroke:#644b2b;stroke-width:.25}.pad.mcu{fill:#d9cfaa}.pad.switch{fill:#e8bc78;stroke:#6c512d}.pad-drill{fill:#0a2223;stroke:#c99a57;stroke-width:.14}.mcu-pin-label{fill:#e9d6ae;font:2.15px monospace;text-anchor:middle}.airwire{stroke:#b6d5c7;stroke-width:.18;opacity:.52}`
+      drawing.insertBefore(style,drawing.firstChild)
+      const svgBlob=new Blob([new XMLSerializer().serializeToString(drawing)],{type:'image/svg+xml'})
+      const bitmap=await createImageBitmap(svgBlob)
+      const canvas=document.createElement('canvas');canvas.width=bitmap.width;canvas.height=bitmap.height
+      const context=canvas.getContext('2d');if(!context)throw Error('canvas unavailable')
+      context.fillStyle='#0d2525';context.fillRect(0,0,canvas.width,canvas.height);context.drawImage(bitmap,0,0);bitmap.close()
+      const png=await new Promise<Blob>((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(Error('PNG unavailable')),'image/png'))
+      await navigator.clipboard.write([new ClipboardItem({'image/png':png})])
+      setNotice('配線画像をクリップボードにコピーしました')
+    }catch{setNotice('配線画像をコピーできませんでした。HTTPS環境でお試しください')}
+  },[puzzle])
+  const shareToX=useCallback(()=>{
+    const text=xShareText(puzzle,checked)
+    window.open(xIntentUrl(text),'_blank','noopener,noreferrer')
+    setNotice('Xの投稿画面を開きました')
+  },[checked,puzzle])
   return <div className="app"><header><div className="brand"><span className="brand-mark">◈</span><div><strong>詰配線</strong><small>TSUME ROUTING <b>/</b> A KEYBOARD PCB PUZZLE</small></div></div><div className="header-right"><button className="open-editor" onClick={()=>setEditorOpen(true)}>問題を作る</button><span className="day">{puzzle.id.toUpperCase()}</span><span className="score">SCORE <b>{checked.score}</b></span></div></header>
     <main><section className="workspace">
       <div className="canvas-toolbar" role="toolbar" aria-label="盤面の操作ツール"><button className={tool==='route'?'active':''} onClick={()=>chooseTool('route')}><b>⌁</b> 配線</button><button onClick={rotateSelected} disabled={!selected&&!selectedSwitch}><b>↺</b> 回転 <kbd>R</kbd></button><button onClick={()=>changeLayer()}><b>⊙</b> VIA <kbd>V</kbd></button><button className={tool==='delete'?'active':''} onClick={()=>chooseTool('delete')}><b>⌫</b> 削除</button><span className="toolbar-divider"/><div className="toolbar-layer" role="group" aria-label="配線レイヤー">{(['F.Cu','B.Cu'] as const).map(layer=><button key={layer} type="button" className={liveLayer===layer?'active':''} aria-pressed={liveLayer===layer} onClick={()=>changeLayer(layer)}><span className={`layer-swatch ${layer==='F.Cu'?'front':'back'}`}/>{layer}</button>)}</div><span className="toolbar-help">{draft?'既存配線をクリックして接続できます':selectedSwitch?`${selectedSwitch} スイッチを選択中`:selected?`${selected} ダイオードを選択中`:'パッドまたは既存配線から開始'}</span></div>
@@ -263,7 +292,7 @@ export default function App(){
       <div className="section-label">RULES</div><div className="rules"><div><span>未接続・ショート</span><b>{puzzle.scoring.connectionError}</b></div><div><span>キープアウト</span><b>{puzzle.scoring.keepoutViolation}</b></div><div><span>配線長</span><b>{puzzle.scoring.routeLength} / mm</b></div><div><span>ビア</span><b>{puzzle.scoring.via}</b></div></div><p className="direction">DIODE DIRECTION <b>{puzzle.matrix.diodeDirection}</b></p>
     </aside></main>
     <footer><button className="reset" onClick={()=>{commit(initialState(puzzle));setDraft(null);setSelected(null);setSelectedSwitch(null);setNotice('盤面をリセット')}}>RESET</button><div className="footer-note">SELECT F.Cu / B.Cu → CLICK PAD OR TRACE <span>·</span> V TO PLACE VIA</div><button className="check" onClick={()=>{setResult(true);setNotice(checked.clear?'CLEAR!':'問題箇所を盤面に表示しています')}}>CHECK / SUBMIT <span>→</span></button></footer>
-    {result&&<div className="result-backdrop" onClick={()=>setResult(false)}><div className="result-card" onClick={e=>e.stopPropagation()}><button className="close" onClick={()=>setResult(false)}>×</button><div className="eyebrow">{puzzle.id.toUpperCase()} / RESULT</div><h2 className={checked.clear?'clear':'incomplete'}>{checked.clear?'CLEAR':'NOT YET'}</h2><div className="total"><span>TOTAL SCORE</span><strong>{checked.score}</strong></div><div className="result-grid"><div>接続エラー <b>{checked.missing+checked.shorts}</b></div><div>キープアウト <b>{checked.keepout}</b></div><div>ビア <b>{checked.viaCount}</b></div><div>配線長 <b>{checked.length.toFixed(1)} mm</b></div></div>{checked.issues.length>0&&<div className="issue-list">{checked.issues.map((issue,i)=><p key={i} className={issue.fatal?'bad':'warn'}>{issue.message}</p>)}</div>}<button className="continue" onClick={()=>setResult(false)}>盤面に戻る</button></div></div>}
+    {result&&<div className="result-backdrop" onClick={()=>setResult(false)}><div className="result-card" onClick={e=>e.stopPropagation()}><button className="close" onClick={()=>setResult(false)}>×</button><div className="eyebrow">{puzzle.id.toUpperCase()} / RESULT</div><h2 className={checked.clear?'clear':'incomplete'}>{checked.clear?'CLEAR':'NOT YET'}</h2><div className="total"><span>TOTAL SCORE</span><strong>{checked.score}</strong></div><div className="result-grid"><div>接続エラー <b>{checked.missing+checked.shorts}</b></div><div>キープアウト <b>{checked.keepout}</b></div><div>ビア <b>{checked.viaCount}</b></div><div>配線長 <b>{checked.length.toFixed(1)} mm</b></div></div>{checked.issues.length>0&&<div className="issue-list">{checked.issues.map((issue,i)=><p key={i} className={issue.fatal?'bad':'warn'}>{issue.message}</p>)}</div>}<button className="copy-wiring" onClick={()=>void copyWiringImage()}>▣ 配線画像をコピー</button><button className="share-x" onClick={shareToX}>𝕏 結果を共有</button><button className="continue" onClick={()=>setResult(false)}>盤面に戻る</button></div></div>}
     {editorOpen&&<Editor source={puzzle} onClose={()=>setEditorOpen(false)} onPlay={next=>{setEditorOpen(false);setPuzzle(next);setBoard(initialState(next));setPast([]);setFuture([]);setDraft(null);setSelected(null);setSelectedSwitch(null);setView({x:0,y:0,w:next.board.width,h:next.board.height});location.hash=`p=${encodePuzzle(next)}`}}/>}
   </div>
 }
