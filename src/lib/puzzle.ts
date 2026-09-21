@@ -17,10 +17,13 @@ export function validatePuzzle(input:unknown):Puzzle {
   }
   const roles=new Set<string>()
   if(!inside(p,{x:p.mcu.x-7,y:p.mcu.y-13})||!inside(p,{x:p.mcu.x+12,y:p.mcu.y+13})||!inside(p,{x:p.mcu.x-7,y:p.mcu.y-8+(p.mcu.pins.length-1)*4}))throw Error('Invalid MCU position')
-  const pinIds=new Set<string>()
-  for (const pin of p.mcu.pins) {if (!pin.id || pinIds.has(pin.id) || !/^((ROW|COL)\d+)$/.test(pin.role) || roles.has(pin.role)) throw Error('Invalid MCU pin');roles.add(pin.role);pinIds.add(pin.id)}
-  for(let i=0;i<p.matrix.rows;i++) if(!roles.has(`ROW${i}`)) throw Error('Missing row GPIO')
-  for(let i=0;i<p.matrix.cols;i++) if(!roles.has(`COL${i}`)) throw Error('Missing col GPIO')
+  // Older shared puzzles used hardware GPIO names. Keep their pin order while
+  // assigning the generic numbers used by current puzzles.
+  for(let i=0;i<p.mcu.pins.length;i++)if(!Number.isInteger(p.mcu.pins[i].number)&&'id' in p.mcu.pins[i])p.mcu.pins[i]={number:i+1,role:p.mcu.pins[i].role}
+  const pinNumbers=new Set<number>()
+  for (const pin of p.mcu.pins) {if (!Number.isInteger(pin.number) || pin.number<1 || pinNumbers.has(pin.number) || !/^((ROW|COL)\d+)$/.test(pin.role) || roles.has(pin.role)) throw Error('Invalid MCU pin');roles.add(pin.role);pinNumbers.add(pin.number)}
+  for(let i=0;i<p.matrix.rows;i++) if(!roles.has(`ROW${i}`)) throw Error('Missing row MCU pin')
+  for(let i=0;i<p.matrix.cols;i++) if(!roles.has(`COL${i}`)) throw Error('Missing col MCU pin')
   for(const k of p.keepouts) if(!k.id || k.type!=='rect' || !positive(k.width) || !positive(k.height) || !finite(k.x,k.y) || !inside(p,{x:k.x,y:k.y}) || !inside(p,{x:k.x+k.width,y:k.y+k.height})) throw Error('Invalid keepout')
   if(!finite(p.scoring.base,p.scoring.connectionError,p.scoring.keepoutViolation,p.scoring.northSwitch,p.scoring.via))throw Error('Invalid scoring')
   return p
@@ -45,6 +48,6 @@ export function pads(p:Puzzle,state:BoardState):Pad[] {
       out.push({...right,id:`${s.id}:K`,label:`${s.id} K`,net:switchSide==='cathode'?`LINK:${s.id}`:`ROW${s.row}`,kind:'diode'})
     }
   }
-  p.mcu.pins.forEach((pin,i)=>out.push({x:p.mcu.x-7,y:p.mcu.y-8+i*4,id:`MCU:${pin.id}`,label:`${pin.id} ${pin.role}`,net:pin.role,kind:'mcu'}))
+  p.mcu.pins.forEach((pin,i)=>out.push({x:p.mcu.x-7,y:p.mcu.y-8+i*4,id:`MCU:${pin.number}`,label:`MCU pin ${pin.number} · ${pin.role}`,net:pin.role,kind:'mcu'}))
   return out
 }

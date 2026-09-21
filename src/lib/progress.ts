@@ -2,9 +2,17 @@ import type {BoardState,Puzzle} from './model'
 import {inside} from './puzzle'
 
 const key=(p:Puzzle)=>{const raw=JSON.stringify(p);let hash=2166136261;for(let i=0;i<raw.length;i++){hash^=raw.charCodeAt(i);hash=Math.imul(hash,16777619)}return `tsume-progress-v2:${p.id}:${hash>>>0}`}
+const legacyKey=(p:Puzzle)=>{
+  if(!/^day\d+$/.test(p.id))return null
+  const ids:Record<string,string>={ROW0:'P0.02',ROW1:'P0.03',COL0:'P0.04',COL1:'P0.05',COL2:'P0.06'}
+  if(p.mcu.pins.some(pin=>!ids[pin.role]))return null
+  const old={...p,mcu:{...p.mcu,pins:p.mcu.pins.map(pin=>({id:ids[pin.role],role:pin.role}))}}
+  return key(old as unknown as Puzzle)
+}
 export function loadProgress(p:Puzzle):BoardState|null{
   try{
-    const raw=localStorage.getItem(key(p));if(!raw)return null
+    const oldKey=legacyKey(p)
+    const raw=localStorage.getItem(key(p))??(oldKey?localStorage.getItem(oldKey):null);if(!raw)return null
     const s=JSON.parse(raw) as BoardState
     if(!Array.isArray(s.diodes)||s.diodes.length!==p.switches.length||!Array.isArray(s.traces)||s.traces.length>1000||!s.switchRotations||typeof s.switchRotations!=='object')return null
     const ids=new Set(p.switches.map(x=>x.id))

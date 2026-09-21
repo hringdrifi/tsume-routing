@@ -19,6 +19,6 @@ export function dailyPuzzle(number:number):Puzzle{
   p.switches=p.switches.map((s,i)=>({...s,rotation:([0,90,180,270][(variant+i*3)%4]) as Rotation}))
   p.keepouts=[{...p.keepouts[0],x:grid(30+(variant*7)%31,48),y:grid(32+(variant*3)%12,48),width:grid(24+(variant%3)*5,48),height:grid(8,48)}]
   const offset=variant%p.mcu.pins.length
-  p.mcu.pins=[...p.mcu.pins.slice(offset),...p.mcu.pins.slice(0,offset)]
+  p.mcu.pins=[...p.mcu.pins.slice(offset),...p.mcu.pins.slice(0,offset)].map((pin,i)=>({...pin,number:i+1}))
   return validatePuzzle(p)
 }

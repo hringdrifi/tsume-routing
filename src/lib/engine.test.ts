@@ -3,15 +3,15 @@ import {evaluate} from './engine'
 import {validatePuzzle,pads} from './puzzle'
 import type {BoardState,RouteNode} from './model'
 
-const puzzle=validatePuzzle({id:'test',title:'Test',board:{width:50,height:45},matrix:{rows:1,cols:1,diodeDirection:'COL2ROW'},northRotation:0,switches:[{id:'SW1',x:12,y:12,rotation:90,row:0,col:0}],mcu:{x:37,y:25,pins:[{id:'A',role:'ROW0'},{id:'B',role:'COL0'}]},keepouts:[{id:'KO',type:'rect',x:19,y:30,width:5,height:5}],scoring:{base:100,connectionError:-10,keepoutViolation:-5,northSwitch:-3,via:-1}})
+const puzzle=validatePuzzle({id:'test',title:'Test',board:{width:50,height:45},matrix:{rows:1,cols:1,diodeDirection:'COL2ROW'},northRotation:0,switches:[{id:'SW1',x:12,y:12,rotation:90,row:0,col:0}],mcu:{x:37,y:25,pins:[{number:1,role:'ROW0'},{number:2,role:'COL0'}]},keepouts:[{id:'KO',type:'rect',x:19,y:30,width:5,height:5}],scoring:{base:100,connectionError:-10,keepoutViolation:-5,northSwitch:-3,via:-1}})
 const route=(id:string,points:{x:number;y:number}[],layer:'F.Cu'|'B.Cu'='F.Cu')=>({id,nodes:points.map(p=>({...p,layer}))})
 function solved():BoardState{
   const state:BoardState={diodes:[{switchId:'SW1',position:{x:24,y:12},rotation:0}],traces:[],switchRotations:{SW1:90}}
   const byId=Object.fromEntries(pads(puzzle,state).map(p=>[p.id,p]))
   state.traces=[
-    route('col',[byId['SW1:col'],{x:5,y:8},{x:5,y:41},{x:36,y:41},byId['MCU:B']]),
+    route('col',[byId['SW1:col'],{x:5,y:8},{x:5,y:41},{x:36,y:41},byId['MCU:2']]),
     route('link',[byId['SW1:link'],{x:18,y:16},byId['SW1:A']]),
-    route('row',[byId['SW1:K'],{x:28,y:5},{x:45,y:5},{x:45,y:17},byId['MCU:A']])
+    route('row',[byId['SW1:K'],{x:28,y:5},{x:45,y:5},{x:45,y:17},byId['MCU:1']])
   ]
   return state
 }

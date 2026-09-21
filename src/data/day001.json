@@ -11,8 +11,8 @@
     {"id":"SW6","x":57.15,"y":57.15,"rotation":90,"row":1,"col":2}
   ],
   "mcu":{"x":104.775,"y":38.1,"pins":[
-    {"id":"P0.02","role":"ROW0"},{"id":"P0.03","role":"ROW1"},
-    {"id":"P0.04","role":"COL0"},{"id":"P0.05","role":"COL1"},{"id":"P0.06","role":"COL2"}
+    {"number":1,"role":"ROW0"},{"number":2,"role":"ROW1"},
+    {"number":3,"role":"COL0"},{"number":4,"role":"COL1"},{"number":5,"role":"COL2"}
   ]},
   "keepouts":[{"id":"KO1","type":"rect","x":38.1,"y":33.3375,"width":38.1,"height":9.525}],
   "scoring":{"base":100,"connectionError":-10,"keepoutViolation":-5,"northSwitch":-3,"via":-1}

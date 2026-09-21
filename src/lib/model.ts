@@ -6,7 +6,7 @@ export type Puzzle = {
   matrix:{rows:number;cols:number;diodeDirection:'COL2ROW'|'ROW2COL'};
   northRotation:Rotation;
   switches:{id:string;x:number;y:number;rotation:Rotation;row:number;col:number}[];
-  mcu:{x:number;y:number;pins:{id:string;role:string}[]};
+  mcu:{x:number;y:number;pins:{number:number;role:string}[]};
   keepouts:{id:string;type:'rect';x:number;y:number;width:number;height:number}[];
   scoring:{base:number;connectionError:number;keepoutViolation:number;northSwitch:number;via:number};
 }
