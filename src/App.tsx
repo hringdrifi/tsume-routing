@@ -11,7 +11,7 @@ import {loadProgress,saveProgress} from './lib/progress'
 import {todayNumber} from './lib/daily'
 import {MX_3PIN} from './lib/mx'
 import {ratsnest} from './lib/ratsnest'
-import {replaceRoute} from './lib/traces'
+import {compactTraces,replaceRoute} from './lib/traces'
 
 const other=(l:Layer):Layer=>l==='F.Cu'?'B.Cu':'F.Cu'
 const asNodes=(from:RouteNode,to:Point):RouteNode[]=>snapPath(from,to).filter(p=>!near(p,from)).map(p=>({...p,layer:from.layer}))
@@ -165,7 +165,7 @@ export default function App(){
     do{id=`T${++seq.current}`}while(board.traces.some(t=>t.id===id))
     const trace:Trace={id,nodes}
     const updated=replaceRoute(board.traces,trace)
-    commit({...board,traces:updated.traces});setDraft(null);setNotice(updated.replaced?`${trace.id} を追加 · 以前の経路を置換`:`${trace.id} を追加`)
+    commit({...board,traces:compactTraces(updated.traces)});setDraft(null);setNotice(updated.replaced?`${trace.id} を追加 · 以前の経路を置換`:`${trace.id} を追加`)
   }
   const changeLayer=(target?:Layer)=>{
     if(!draft){if(target){setRouteLayer(target);setNotice(`${target} で配線を開始します`)}else setNotice('配線中にVでビアを配置できます');return}
