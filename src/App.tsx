@@ -107,7 +107,7 @@ export default function App(){
     const target=e.target as Element
     if(target.closest('.pad-group,.diode,.switch,.trace.existing'))return
     touchPoints.current.set(e.pointerId,{x:e.clientX,y:e.clientY})
-    if(touchPoints.current.size===1)touchPan.current={pointerId:e.pointerId,point:rawPt(e),moved:false}
+    if(touchPoints.current.size===1)touchPan.current={pointerId:e.pointerId,point:{x:e.clientX,y:e.clientY},moved:false}
     if(touchPoints.current.size===2){
       const [a,b]=[...touchPoints.current.values()]
       pinchDistance.current=Math.hypot(a.x-b.x,a.y-b.y)
@@ -122,13 +122,14 @@ export default function App(){
       const [a,b]=[...touchPoints.current.values()]
       const distance=Math.hypot(a.x-b.x,a.y-b.y),previous=pinchDistance.current
       if(!previous||distance===0)return
-      const focus=rawPt({clientX:(a.x+b.x)/2,clientY:(a.y+b.y)/2})
+      const center={x:(a.x+b.x)/2,y:(a.y+b.y)/2},bounds=e.currentTarget.getBoundingClientRect()
       const factor=previous/distance
       pinchDistance.current=distance
       touchPan.current=null
       suppressDragClick.current=true
       setView(current=>{
         const width=Math.max(45,Math.min(200,current.w*factor)),height=Math.max(30,Math.min(135,current.h*factor))
+        const focus={x:current.x-3+(center.x-bounds.left)*(current.w+6)/bounds.width,y:current.y-3+(center.y-bounds.top)*(current.h+6)/bounds.height}
         const fx=(focus.x-current.x+3)/(current.w+6),fy=(focus.y-current.y+3)/(current.h+6)
         return {x:focus.x-fx*(width+6)+3,y:focus.y-fy*(height+6)+3,w:width,h:height}
       })
@@ -136,10 +137,10 @@ export default function App(){
     }
     const pan=touchPan.current
     if(!pan||pan.pointerId!==e.pointerId)return
-    const point=rawPt(e),dx=point.x-pan.point.x,dy=point.y-pan.point.y
+    const point={x:e.clientX,y:e.clientY},dx=point.x-pan.point.x,dy=point.y-pan.point.y,bounds=e.currentTarget.getBoundingClientRect()
     if(Math.abs(dx)>.15||Math.abs(dy)>.15)pan.moved=true
     pan.point=point
-    setView(v=>({...v,x:v.x-dx,y:v.y-dy}))
+    setView(v=>({...v,x:v.x-dx*(v.w+6)/bounds.width,y:v.y-dy*(v.h+6)/bounds.height}))
   }
   const endTouchPan=(e:React.PointerEvent<SVGSVGElement>)=>{
     if(!touchPoints.current.has(e.pointerId))return
@@ -148,7 +149,7 @@ export default function App(){
     if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId)
     if(touchPoints.current.size===1){
       const [pointerId,point]=[...touchPoints.current.entries()][0]
-      touchPan.current={pointerId,point:rawPt({clientX:point.x,clientY:point.y}),moved:true}
+      touchPan.current={pointerId,point,moved:true}
       return
     }
     const pan=touchPan.current
