@@ -12,6 +12,7 @@ import {todayNumber} from './lib/daily'
 import {MX_3PIN} from './lib/mx'
 import {ratsnest} from './lib/ratsnest'
 import {compactTraces,replaceRoute} from './lib/traces'
+import './fixed-footer.css'
 
 const other=(l:Layer):Layer=>l==='F.Cu'?'B.Cu':'F.Cu'
 const MIN_VIEW_WIDTH=28
@@ -190,12 +191,12 @@ export default function App(){
   const rotateSelected=()=>{
     if(selectedSwitch){
       const current=board.switchRotations[selectedSwitch]??puzzle.switches.find(s=>s.id===selectedSwitch)!.rotation
-      const rotation=((current+90)%360) as Rotation
+      const rotation=((current+270)%360) as Rotation
       commit({...board,switchRotations:{...board.switchRotations,[selectedSwitch]:rotation}})
       setDraft(null);setNotice(`${selectedSwitch} を90°回転 · 既存配線は動きません`);return
     }
     if(selected){
-      const next=board.diodes.map(d=>d.switchId===selected?{...d,rotation:((d.rotation+90)%360) as Rotation}:d)
+      const next=board.diodes.map(d=>d.switchId===selected?{...d,rotation:((d.rotation+270)%360) as Rotation}:d)
       commit({...board,diodes:next});setDraft(null);setNotice(`${selected} ダイオードを90°回転`)
     }
   }
@@ -238,7 +239,7 @@ export default function App(){
   const navigateDay=(n:number)=>{location.href=`${import.meta.env.BASE_URL}?puzzle=day${String(n).padStart(3,'0')}`}
   return <div className="app"><header><div className="brand"><span className="brand-mark">◈</span><div><strong>詰配線</strong><small>TSUME ROUTING <b>/</b> A KEYBOARD PCB PUZZLE</small></div></div><div className="header-right"><button className="open-editor" onClick={()=>setEditorOpen(true)}>問題を作る</button><span className="day">{puzzle.id.toUpperCase()}</span><span className="score">SCORE <b>{checked.score}</b></span></div></header>
     <main><section className="workspace"><div className="board-bar"><span><i className="live-dot"/> PCB EDITOR <em>{puzzle.board.width} × {puzzle.board.height} mm</em></span><div className="grid-control">GRID 1/{ROUTING_GRID}u ({gridStep(ROUTING_GRID).toFixed(4)} mm)<b>·</b> 2 LAYERS</div></div>
-      <div className="canvas-toolbar" role="toolbar" aria-label="盤面の操作ツール"><span className="toolbar-label">操作</span><button className={tool==='route'?'active':''} onClick={()=>chooseTool('route')}><b>⌁</b> 配線</button><button onClick={rotateSelected} disabled={!selected&&!selectedSwitch}><b>↻</b> 回転 <kbd>R</kbd></button><button onClick={()=>changeLayer()}><b>⊙</b> VIA <kbd>V</kbd></button><button className={tool==='delete'?'active':''} onClick={()=>chooseTool('delete')}><b>⌫</b> 削除</button><span className="toolbar-help">{draft?'既存配線をクリックして接続できます':selectedSwitch?`${selectedSwitch} スイッチを選択中`:selected?`${selected} ダイオードを選択中`:'パッドまたは既存配線から開始'}</span></div>
+      <div className="canvas-toolbar" role="toolbar" aria-label="盤面の操作ツール"><span className="toolbar-label">操作</span><button className={tool==='route'?'active':''} onClick={()=>chooseTool('route')}><b>⌁</b> 配線</button><button onClick={rotateSelected} disabled={!selected&&!selectedSwitch}><b>↺</b> 回転 <kbd>R</kbd></button><button onClick={()=>changeLayer()}><b>⊙</b> VIA <kbd>V</kbd></button><button className={tool==='delete'?'active':''} onClick={()=>chooseTool('delete')}><b>⌫</b> 削除</button><span className="toolbar-help">{draft?'既存配線をクリックして接続できます':selectedSwitch?`${selectedSwitch} スイッチを選択中`:selected?`${selected} ダイオードを選択中`:'パッドまたは既存配線から開始'}</span></div>
       <div className="canvas-wrap"><svg ref={svg} viewBox={`${view.x-3} ${view.y-3} ${view.w+6} ${view.h+6}`} onMouseMove={e=>{if(drag.current){const p=pt(e),dx=p.x-drag.current.x,dy=p.y-drag.current.y;setView(v=>({...v,x:v.x-dx,y:v.y-dy}));return}setCursor(pt(e))}} onMouseDown={e=>{if(e.button===1){e.preventDefault();drag.current=pt(e)}}} onMouseUp={()=>drag.current=null} onMouseLeave={()=>drag.current=null} onPointerDown={startTouchPan} onPointerMove={e=>{moveDiodeDrag(e);moveTouchPan(e)}} onPointerUp={e=>{endDiodeDrag(e);endTouchPan(e)}} onPointerCancel={e=>{cancelDiodeDrag();endTouchPan(e)}} onClick={onBoardClick}>
         <defs><pattern id="grid-major" width={KEY_UNIT_MM} height={KEY_UNIT_MM} patternUnits="userSpaceOnUse"><circle cx="0" cy="0" r=".22" fill="var(--grid-dot)"/></pattern><pattern id="grid-minor" width={gridStep(ROUTING_GRID)} height={gridStep(ROUTING_GRID)} patternUnits="userSpaceOnUse"><circle cx="0" cy="0" r=".08" fill="var(--grid-dot)"/></pattern></defs>
         <rect x="0" y="0" width={puzzle.board.width} height={puzzle.board.height} rx="2" className="pcb"/>{view.w<65&&<rect x="0" y="0" width={puzzle.board.width} height={puzzle.board.height} rx="2" fill="url(#grid-minor)"/>}<rect x="0" y="0" width={puzzle.board.width} height={puzzle.board.height} rx="2" fill="url(#grid-major)"/>
@@ -247,8 +248,8 @@ export default function App(){
         {previewBoard.diodes.map(d=><g key={d.switchId} transform={`translate(${d.position!.x} ${d.position!.y}) rotate(${d.rotation})`} onPointerDown={e=>startDiodeDrag(d,e)} onClick={e=>{e.stopPropagation();if(suppressDragClick.current){suppressDragClick.current=false;return}setSelectedSwitch(null);setSelected(d.switchId);setDraft(null);setNotice(`${d.switchId} ダイオードを選択 · ドラッグで移動 · Rで回転`)}}><rect className={`diode ${selected===d.switchId?'selected':''} ${draggedDiode?.switchId===d.switchId?'dragging':''}`} x="-3.5" y="-1.6" width="7" height="3.2" rx=".5"/><path className="diode-symbol" d="M-1 -1 L1 0 L-1 1 Z M1 -1 L1 1"/><text className="diode-label" x="0" y="-3" transform={`rotate(${-d.rotation})`}>{d.switchId} D</text></g>)}
         {airwires.map(w=><line key={`${w.net}:${w.from.id}:${w.to.id}`} className="airwire" x1={w.from.x} y1={w.from.y} x2={w.to.x} y2={w.to.y}/>)}
         <g transform={`translate(${puzzle.mcu.x} ${puzzle.mcu.y})`}><rect className="mcu" x="-4" y="-13" width="16" height="26" rx="1"/><text className="mcu-label" x="4" y="-15">MCU</text></g>
-        {board.traces.map(t=><g key={t.id}>{routeLines(t.nodes,t.id,true)}{viaPoints(t.nodes).map((v,i)=><circle key={i} className="via" cx={v.x} cy={v.y} r="1.35"/>)}</g>)}
-        {draft&&<g opacity=".72" pointerEvents="none">{routeLines(displayNodes,'draft')}{viaPoints(draft).map((v,i)=><circle key={i} className="via" cx={v.x} cy={v.y} r="1.35"/>)}</g>}
+        {board.traces.map(t=><g key={t.id}>{routeLines(t.nodes,t.id,true)}{viaPoints(t.nodes).map((v,i)=><circle key={i} className="via" cx={v.x} cy={v.y} r=".8"/>)}</g>)}
+        {draft&&<g opacity=".72" pointerEvents="none">{routeLines(displayNodes,'draft')}{viaPoints(draft).map((v,i)=><circle key={i} className="via" cx={v.x} cy={v.y} r=".8"/>)}</g>}
         {allPads.map(pad=><g key={pad.id} className="pad-group" onClick={e=>onPad(pad,e)}><circle className={`pad ${pad.kind}`} cx={pad.x} cy={pad.y} r={pad.kind==='switch'?MX_3PIN.copperRadius:1.4}/>{pad.kind!=='diode'&&<circle className="pad-drill" cx={pad.x} cy={pad.y} r={pad.kind==='switch'?MX_3PIN.pinDrillRadius:.55}/>}<circle className="pad-hit" cx={pad.x} cy={pad.y} r={pad.kind==='switch'?2.4:2.8}/><title>{pad.label}</title></g>)}
         {puzzle.mcu.pins.map((pin,i)=><text key={pin.number} className="mcu-pin-label" x={puzzle.mcu.x+4} y={puzzle.mcu.y-8+i*4}>{pin.role}</text>)}
         {result&&checked.issues.map((issue,i)=><g key={i}><circle className={`issue ${issue.fatal?'fatal':'warning'}`} cx={issue.point.x} cy={issue.point.y} r="3"/><text className="issue-mark" x={issue.point.x} y={issue.point.y+.8}>!</text></g>)}

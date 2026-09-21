@@ -1,5 +1,5 @@
 import {expect,it} from 'vitest'
-import {grid,gridStep,KEY_UNIT_MM} from './geometry'
+import {grid,gridStep,KEY_UNIT_MM,ROUTING_GRID} from './geometry'
 import {day001} from './puzzle'
 import {initialState} from './model'
 
@@ -17,5 +17,6 @@ it('places sample key centers on a 1u pitch',()=>{
 it('starts with every diode placed outside the keepout',()=>{
   const state=initialState(day001)
   expect(state.diodes.every(d=>d.position)).toBe(true)
+  expect(state.diodes.every(d=>grid(d.position!.x,ROUTING_GRID)===d.position!.x&&grid(d.position!.y,ROUTING_GRID)===d.position!.y)).toBe(true)
   expect(state.diodes.every(d=>!day001.keepouts.some(k=>d.position!.x>=k.x&&d.position!.x<=k.x+k.width&&d.position!.y>=k.y&&d.position!.y<=k.y+k.height))).toBe(true)
 })

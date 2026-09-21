@@ -1,0 +1,4 @@
+.app{padding-bottom:78px}
+.app footer{position:fixed;right:0;bottom:0;left:0;z-index:4;background:#0b1718}
+
+@media(max-width:800px){.app{padding-bottom:64px}.app footer{position:fixed}}
