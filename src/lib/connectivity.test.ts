@@ -15,3 +15,16 @@ it('connects a branch added on the far side of a via',()=>{
   expect(connected.get('A')).toBe(connected.get('B'))
   expect(connected.get('B')).toBe(connected.get('C'))
 })
+
+it('connects a via placed directly on an existing trace',()=>{
+  const pads=[
+    {id:'A',label:'A',net:'NET',kind:'switch' as const,x:0,y:0},
+    {id:'B',label:'B',net:'NET',kind:'switch' as const,x:10,y:10},
+  ]
+  const state={diodes:[],switchRotations:{},traces:[
+    {id:'trunk',nodes:[{x:0,y:0,layer:'F.Cu' as const},{x:20,y:0,layer:'F.Cu' as const}]},
+    {id:'via-branch',nodes:[{x:10,y:0,layer:'F.Cu' as const},{x:10,y:0,layer:'B.Cu' as const},{x:10,y:10,layer:'B.Cu' as const}]},
+  ]}
+  const connected=connectedComponents(pads,state)
+  expect(connected.get('A')).toBe(connected.get('B'))
+})

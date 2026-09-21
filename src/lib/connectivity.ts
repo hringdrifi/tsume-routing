@@ -12,9 +12,13 @@ export function connectedComponents(allPads:Pad[],state:BoardState):Map<string,n
   const dsu=new DSU(),keys=new Map<string,number>()
   const node=(pt:Point,layer:string)=>{const key=pointKey(pt,layer);if(!keys.has(key))keys.set(key,dsu.add());return keys.get(key)!}
   const segments=state.traces.flatMap(t=>traceSegments(t.nodes))
+  const traceNodes=state.traces.flatMap(t=>t.nodes)
   for(const s of segments){
     const points:Point[]=[s.a,s.b]
     for(const pad of allPads)if(onSegment(pad,s.a,s.b))points.push(pad)
+    // A via placed directly on an existing trace has no same-layer branch segment
+    // of its own. Its node still needs to split the underlying segment electrically.
+    for(const point of traceNodes)if(point.layer===s.layer&&onSegment(point,s.a,s.b))points.push(point)
     for(const t of segments)if(s.layer===t.layer)points.push(...intersections(s.a,s.b,t.a,t.b))
     points.sort((a,b)=>distance(a,s.a)-distance(b,s.a))
     for(let i=1;i<points.length;i++)dsu.join(node(points[i-1],s.layer),node(points[i],s.layer))
