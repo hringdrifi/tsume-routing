@@ -8,7 +8,7 @@ it('maps the current launch day in Japan to Day 001',()=>{
 })
 it('creates ten fixed, varied daily puzzles',()=>{
   expect(dailyPuzzle(1)).toEqual(day001)
-  expect([...Array(DAILY_COUNT)],(_,index)=>dailyPuzzle(index+1)).toHaveLength(DAILY_COUNT)
+  expect([...Array(DAILY_COUNT)].map((_,index)=>dailyPuzzle(index+1))).toHaveLength(DAILY_COUNT)
   expect(dailyPuzzle(2).switches).toHaveLength(4)
   expect(dailyPuzzle(8).matrix).toMatchObject({rows:4,cols:3})
   expect(dailyPuzzle(10).mcu.pins.map(pin=>pin.role)).not.toEqual(dailyPuzzle(1).mcu.pins.map(pin=>pin.role))
