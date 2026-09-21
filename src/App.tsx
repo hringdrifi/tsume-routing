@@ -35,6 +35,8 @@ export default function App(){
   const [view,setView]=useState({x:0,y:0,w:puzzle.board.width,h:puzzle.board.height})
   const svg=useRef<SVGSVGElement>(null),drag=useRef<Point|null>(null),seq=useRef(0)
   const touchPan=useRef<{pointerId:number;point:Point;moved:boolean}|null>(null)
+  const touchPoints=useRef(new Map<number,Point>())
+  const pinchDistance=useRef<number|null>(null)
   const diodeDrag=useRef<{switchId:string;start:Point;cursor:Point;position:Point;pointerId:number;moved:boolean}|null>(null)
   const suppressDragClick=useRef(false)
   const previewBoard=useMemo(()=>draggedDiode?{...board,diodes:board.diodes.map(d=>d.switchId===draggedDiode.switchId?{...d,position:draggedDiode.position}:d)}:board,[board,draggedDiode])
@@ -104,10 +106,34 @@ export default function App(){
     if(e.pointerType!=='touch'||diodeDrag.current)return
     const target=e.target as Element
     if(target.closest('.pad-group,.diode,.switch,.trace.existing'))return
-    touchPan.current={pointerId:e.pointerId,point:rawPt(e),moved:false}
+    touchPoints.current.set(e.pointerId,{x:e.clientX,y:e.clientY})
+    if(touchPoints.current.size===1)touchPan.current={pointerId:e.pointerId,point:rawPt(e),moved:false}
+    if(touchPoints.current.size===2){
+      const [a,b]=[...touchPoints.current.values()]
+      pinchDistance.current=Math.hypot(a.x-b.x,a.y-b.y)
+      touchPan.current=null
+    }
     e.currentTarget.setPointerCapture(e.pointerId)
   }
   const moveTouchPan=(e:React.PointerEvent<SVGSVGElement>)=>{
+    if(!touchPoints.current.has(e.pointerId))return
+    touchPoints.current.set(e.pointerId,{x:e.clientX,y:e.clientY})
+    if(touchPoints.current.size>=2){
+      const [a,b]=[...touchPoints.current.values()]
+      const distance=Math.hypot(a.x-b.x,a.y-b.y),previous=pinchDistance.current
+      if(!previous||distance===0)return
+      const focus=rawPt({clientX:(a.x+b.x)/2,clientY:(a.y+b.y)/2})
+      const factor=previous/distance
+      pinchDistance.current=distance
+      touchPan.current=null
+      suppressDragClick.current=true
+      setView(current=>{
+        const width=Math.max(45,Math.min(200,current.w*factor)),height=Math.max(30,Math.min(135,current.h*factor))
+        const fx=(focus.x-current.x+3)/(current.w+6),fy=(focus.y-current.y+3)/(current.h+6)
+        return {x:focus.x-fx*(width+6)+3,y:focus.y-fy*(height+6)+3,w:width,h:height}
+      })
+      return
+    }
     const pan=touchPan.current
     if(!pan||pan.pointerId!==e.pointerId)return
     const point=rawPt(e),dx=point.x-pan.point.x,dy=point.y-pan.point.y
@@ -116,10 +142,18 @@ export default function App(){
     setView(v=>({...v,x:v.x-dx,y:v.y-dy}))
   }
   const endTouchPan=(e:React.PointerEvent<SVGSVGElement>)=>{
+    if(!touchPoints.current.has(e.pointerId))return
+    touchPoints.current.delete(e.pointerId)
+    pinchDistance.current=null
+    if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId)
+    if(touchPoints.current.size===1){
+      const [pointerId,point]=[...touchPoints.current.entries()][0]
+      touchPan.current={pointerId,point:rawPt({clientX:point.x,clientY:point.y}),moved:true}
+      return
+    }
     const pan=touchPan.current
     if(!pan||pan.pointerId!==e.pointerId)return
     touchPan.current=null
-    if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId)
     if(pan.moved){suppressDragClick.current=true;window.setTimeout(()=>{suppressDragClick.current=false},0)}
   }
   const finish=(target:Point)=>{
@@ -215,7 +249,7 @@ export default function App(){
         {allPads.map(pad=><g key={pad.id} className="pad-group" onClick={e=>onPad(pad,e)}><circle className={`pad ${pad.kind}`} cx={pad.x} cy={pad.y} r={pad.kind==='switch'?MX_3PIN.copperRadius:1.25}/>{pad.kind==='switch'&&<circle className="pad-drill" cx={pad.x} cy={pad.y} r={MX_3PIN.pinDrillRadius}/>}<circle className="pad-hit" cx={pad.x} cy={pad.y} r={pad.kind==='switch'?2.4:2.8}/><title>{pad.label}</title></g>)}
         {puzzle.mcu.pins.map((pin,i)=><text key={pin.number} className="mcu-pin-label" x={puzzle.mcu.x+4} y={puzzle.mcu.y-8+i*4}>{pin.role}</text>)}
         {result&&checked.issues.map((issue,i)=><g key={i}><circle className={`issue ${issue.fatal?'fatal':'warning'}`} cx={issue.point.x} cy={issue.point.y} r="3"/><text className="issue-mark" x={issue.point.x} y={issue.point.y+.8}>!</text></g>)}
-      </svg><div className="canvas-hint"><span className="desktop-hint">ホイール: ズーム <span>·</span> 中ボタン: パン</span><span className="touch-hint">1本指: パン <span>·</span> タップ: 操作</span> <span>·</span> Esc: 中断</div></div>
+      </svg><div className="canvas-hint"><span className="desktop-hint">ホイール: ズーム <span>·</span> 中ボタン: パン</span><span className="touch-hint">1本指: パン <span>·</span> 2本指: 拡大・縮小 <span>·</span> タップ: 操作</span> <span>·</span> Esc: 中断</div></div>
       <div className="status"><span className="status-led"/>{notice}<span className="coords">{cursor?`${cursor.x}, ${cursor.y} mm`:''}</span></div>
     </section>
     <aside><div className="panel-title">WORKBENCH <span>{puzzle.id.toUpperCase()}</span></div><h2>{puzzle.title}</h2><p className="panel-intro">{puzzle.switches.length}つのキーを{puzzle.matrix.rows}×{puzzle.matrix.cols}の行列へ。配置済みのダイオードを調整し、MCUの{puzzle.mcu.pins.length}本のピンまで配線してください。点線は未接続のラッツネストです。</p>{dayNumber>0&&<div className="daily-nav"><button disabled={dayNumber<=1} onClick={()=>navigateDay(dayNumber-1)}>← 前の問題</button><button onClick={()=>navigateDay(todayNumber())}>今日の問題</button><button disabled={dayNumber>=todayNumber()} onClick={()=>navigateDay(dayNumber+1)}>次の問題 →</button></div>}
