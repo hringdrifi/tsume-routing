@@ -17,4 +17,22 @@ export type BoardState = {diodes:Diode[];traces:Trace[];switchRotations:Record<s
 export type Pad = Point & {id:string;label:string;net:string;kind:'switch'|'diode'|'mcu'}
 export type Issue = {kind:'disconnected'|'short'|'keepout'|'diode';message:string;point:Point;fatal:boolean}
 export type Result = {clear:boolean;score:number;viaCount:number;length:number;issues:Issue[];missing:number;shorts:number;keepout:number;north:number}
-export const initialState = (p:Puzzle):BoardState => ({diodes:p.switches.map(s=>({switchId:s.id,position:null,rotation:0})),traces:[],switchRotations:Object.fromEntries(p.switches.map(s=>[s.id,s.rotation]))})
+function initialDiodes(p:Puzzle):Diode[]{
+  const placed:Point[]=[]
+  return p.switches.map(s=>{
+    const towardCenter=s.y<p.board.height/2?1:-1
+    const offsets=[
+      {x:0,y:10*towardCenter},{x:0,y:-10*towardCenter},
+      {x:10,y:0},{x:-10,y:0},{x:14,y:10*towardCenter},{x:-14,y:10*towardCenter}
+    ]
+    const candidates=offsets.map(o=>({x:Math.max(4,Math.min(p.board.width-4,s.x+o.x)),y:Math.max(4,Math.min(p.board.height-4,s.y+o.y))}))
+    const position=candidates.find(pt=>
+      !p.keepouts.some(k=>pt.x>=k.x-4&&pt.x<=k.x+k.width+4&&pt.y>=k.y-3&&pt.y<=k.y+k.height+3)&&
+      !p.switches.some(sw=>sw.id!==s.id&&Math.abs(pt.x-sw.x)<10.5&&Math.abs(pt.y-sw.y)<9.5)&&
+      !placed.some(other=>Math.hypot(pt.x-other.x,pt.y-other.y)<8)
+    )??candidates[0]
+    placed.push(position)
+    return {switchId:s.id,position,rotation:0}
+  })
+}
+export const initialState = (p:Puzzle):BoardState => ({diodes:initialDiodes(p),traces:[],switchRotations:Object.fromEntries(p.switches.map(s=>[s.id,s.rotation]))})

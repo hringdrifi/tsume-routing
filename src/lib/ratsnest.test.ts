@@ -8,7 +8,7 @@ it('shows only missing connections and removes an airwire after a copper connect
   const allPads=pads(day001,state)
   const before=ratsnest(allPads,state)
   expect(before.some(w=>w.net==='COL0')).toBe(true)
-  expect(before.some(w=>w.net.startsWith('LINK:'))).toBe(false)
+  expect(before.some(w=>w.net.startsWith('LINK:'))).toBe(true)
 
   const sw=allPads.find(p=>p.id==='SW1:col')!
   const mcu=allPads.find(p=>p.kind==='mcu'&&p.net==='COL0')!
@@ -20,7 +20,5 @@ it('shows only missing connections and removes an airwire after a copper connect
   ]})
   expect(ratsnest(allPads,state).filter(w=>w.net==='COL0')).toHaveLength(before.filter(w=>w.net==='COL0').length-1)
 
-  state.diodes[0].position={x:75,y:15}
-  const withDiode=pads(day001,state)
-  expect(ratsnest(withDiode,state).some(w=>w.net==='LINK:SW1')).toBe(true)
+  expect(ratsnest(allPads,state).some(w=>w.net==='LINK:SW1')).toBe(true)
 })

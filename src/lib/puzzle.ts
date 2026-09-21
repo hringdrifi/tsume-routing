@@ -17,9 +17,6 @@ export function validatePuzzle(input:unknown):Puzzle {
   }
   const roles=new Set<string>()
   if(!inside(p,{x:p.mcu.x-7,y:p.mcu.y-13})||!inside(p,{x:p.mcu.x+12,y:p.mcu.y+13})||!inside(p,{x:p.mcu.x-7,y:p.mcu.y-8+(p.mcu.pins.length-1)*4}))throw Error('Invalid MCU position')
-  // Older shared puzzles used hardware GPIO names. Keep their pin order while
-  // assigning the generic numbers used by current puzzles.
-  for(let i=0;i<p.mcu.pins.length;i++)if(!Number.isInteger(p.mcu.pins[i].number)&&'id' in p.mcu.pins[i])p.mcu.pins[i]={number:i+1,role:p.mcu.pins[i].role}
   const pinNumbers=new Set<number>()
   for (const pin of p.mcu.pins) {if (!Number.isInteger(pin.number) || pin.number<1 || pinNumbers.has(pin.number) || !/^((ROW|COL)\d+)$/.test(pin.role) || roles.has(pin.role)) throw Error('Invalid MCU pin');roles.add(pin.role);pinNumbers.add(pin.number)}
   for(let i=0;i<p.matrix.rows;i++) if(!roles.has(`ROW${i}`)) throw Error('Missing row MCU pin')
