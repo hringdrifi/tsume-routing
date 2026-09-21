@@ -1,5 +1,5 @@
 import {validatePuzzle} from './puzzle'
-import {dailyPuzzle,todayNumber} from './daily'
+import {dailyPuzzle,isDebugMode,lastAvailableDay,todayNumber} from './daily'
 import type {Puzzle} from './model'
 
 export function encodePuzzle(p:Puzzle):string{
@@ -14,13 +14,15 @@ export function decodePuzzle(encoded:string):Puzzle{
   const bytes=Uint8Array.from(binary,c=>c.charCodeAt(0))
   return validatePuzzle(JSON.parse(new TextDecoder().decode(bytes)))
 }
-export function puzzleFromLocation():Puzzle{
-  const hash=new URLSearchParams(location.hash.slice(1))
-  const shared=hash.get('p')
+export function puzzleFromLocation(href=location.href,now=new Date()):Puzzle{
+  const url=new URL(href,typeof location==='undefined'?'https://example.test/':location.origin)
+  const shared=new URLSearchParams(url.hash.slice(1)).get('p')
   if(shared)return decodePuzzle(shared)
-  const id=new URLSearchParams(location.search).get('puzzle')
-  const path=location.pathname.match(/\/day\/(\d{1,4})\/?$/)
-  if(id){const match=id.match(/^day(\d{1,4})$/);if(!match)throw Error(`問題 ${id} は見つかりません`);return dailyPuzzle(Number(match[1]))}
-  if(path)return dailyPuzzle(Number(path[1]))
-  return dailyPuzzle(todayNumber())
+  const id=url.searchParams.get('puzzle')
+  const path=url.pathname.match(/\/day\/(\d{1,4})\/?$/)
+  const requested=id?.match(/^day(\d{1,4})$/)?.[1]??path?.[1]
+  if(id&&!requested)throw Error(`問題 ${id} は見つかりません`)
+  const number=requested?Number(requested):todayNumber(now)
+  if(number>lastAvailableDay(now,isDebugMode(url.search)))throw Error('この問題はまだ公開されていません')
+  return dailyPuzzle(number)
 }

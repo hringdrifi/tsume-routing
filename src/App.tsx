@@ -8,7 +8,7 @@ import {grid,gridStep,KEY_UNIT_MM,near,ROUTING_GRID,snapPath,traceSegments} from
 import {encodePuzzle} from './lib/share'
 import Editor from './Editor'
 import {loadProgress,saveProgress} from './lib/progress'
-import {todayNumber} from './lib/daily'
+import {isDebugMode,lastAvailableDay,todayNumber} from './lib/daily'
 import {MX_3PIN} from './lib/mx'
 import {ratsnest} from './lib/ratsnest'
 import {compactTraces,replaceRoute} from './lib/traces'
@@ -236,7 +236,9 @@ export default function App(){
   }):undefined}/>)
   const liveLayer=draft?.at(-1)?.layer??routeLayer
   const dayNumber=Number(puzzle.id.match(/^day(\d+)$/)?.[1]??0)
-  const navigateDay=(n:number)=>{location.href=`${import.meta.env.BASE_URL}?puzzle=day${String(n).padStart(3,'0')}`}
+  const debug=isDebugMode()
+  const latestDay=lastAvailableDay(new Date(),debug)
+  const navigateDay=(n:number)=>{location.href=`${import.meta.env.BASE_URL}?${debug?'debug=1&':''}puzzle=day${String(n).padStart(3,'0')}`}
   return <div className="app"><header><div className="brand"><span className="brand-mark">◈</span><div><strong>詰配線</strong><small>TSUME ROUTING <b>/</b> A KEYBOARD PCB PUZZLE</small></div></div><div className="header-right"><button className="open-editor" onClick={()=>setEditorOpen(true)}>問題を作る</button><span className="day">{puzzle.id.toUpperCase()}</span><span className="score">SCORE <b>{checked.score}</b></span></div></header>
     <main><section className="workspace">
       <div className="canvas-toolbar" role="toolbar" aria-label="盤面の操作ツール"><button className={tool==='route'?'active':''} onClick={()=>chooseTool('route')}><b>⌁</b> 配線</button><button onClick={rotateSelected} disabled={!selected&&!selectedSwitch}><b>↺</b> 回転 <kbd>R</kbd></button><button onClick={()=>changeLayer()}><b>⊙</b> VIA <kbd>V</kbd></button><button className={tool==='delete'?'active':''} onClick={()=>chooseTool('delete')}><b>⌫</b> 削除</button><span className="toolbar-divider"/><div className="toolbar-layer" role="group" aria-label="配線レイヤー">{(['F.Cu','B.Cu'] as const).map(layer=><button key={layer} type="button" className={liveLayer===layer?'active':''} aria-pressed={liveLayer===layer} onClick={()=>changeLayer(layer)}><span className={`layer-swatch ${layer==='F.Cu'?'front':'back'}`}/>{layer}</button>)}</div><span className="toolbar-help">{draft?'既存配線をクリックして接続できます':selectedSwitch?`${selectedSwitch} スイッチを選択中`:selected?`${selected} ダイオードを選択中`:'パッドまたは既存配線から開始'}</span></div>
@@ -256,7 +258,7 @@ export default function App(){
       </svg><div className="canvas-hint"><span className="desktop-hint">ホイール: ズーム <span>·</span> 中ボタン: パン</span><span className="touch-hint">1本指: パン <span>·</span> 2本指: 拡大・縮小 <span>·</span> タップ: 操作</span> <span>·</span> Esc: 中断</div></div>
       <div className="status"><span className="status-led"/>{notice}<span className="coords">{cursor?`${cursor.x}, ${cursor.y} mm`:''}</span></div>
     </section>
-    <aside><div className="action-row history-actions"><button className="secondary" onClick={undo} disabled={!past.length}>↶ UNDO</button><button className="secondary" onClick={redo} disabled={!future.length}>↷ REDO</button></div>{dayNumber>0&&<div className="daily-nav"><button disabled={dayNumber<=1} onClick={()=>navigateDay(dayNumber-1)}>← 前の問題</button><button onClick={()=>navigateDay(todayNumber())}>今日の問題</button><button disabled={dayNumber>=todayNumber()} onClick={()=>navigateDay(dayNumber+1)}>次の問題 →</button></div>}
+    <aside><div className="action-row history-actions"><button className="secondary" onClick={undo} disabled={!past.length}>↶ UNDO</button><button className="secondary" onClick={redo} disabled={!future.length}>↷ REDO</button></div>{dayNumber>0&&<div className="daily-nav"><button disabled={dayNumber<=1} onClick={()=>navigateDay(dayNumber-1)}>← 前の問題</button><button onClick={()=>navigateDay(todayNumber())}>今日の問題</button><button disabled={dayNumber>=latestDay} onClick={()=>navigateDay(dayNumber+1)}>次の問題 →</button></div>}
       <h2>{puzzle.title}</h2><p className="panel-intro">{puzzle.switches.length}つのキーを{puzzle.matrix.rows}×{puzzle.matrix.cols}の行列へ。配置済みのダイオードを調整し、MCUの{puzzle.mcu.pins.length}本のピンまで配線してください。点線は未接続のラッツネストです。</p>
       <div className="section-label">RULES</div><div className="rules"><div><span>未接続・ショート</span><b>{puzzle.scoring.connectionError}</b></div><div><span>キープアウト</span><b>{puzzle.scoring.keepoutViolation}</b></div><div><span>配線長</span><b>{puzzle.scoring.routeLength} / mm</b></div><div><span>ビア</span><b>{puzzle.scoring.via}</b></div></div><p className="direction">DIODE DIRECTION <b>{puzzle.matrix.diodeDirection}</b></p>
     </aside></main>
