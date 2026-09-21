@@ -9,7 +9,7 @@ export function validatePuzzle(input:unknown):Puzzle {
   const positive=(n:number)=>Number.isFinite(n)&&n>0
   const finite=(...ns:number[])=>ns.every(Number.isFinite)
   if (!p || typeof p.id!=='string' || !p.id.trim() || p.id.length>80 || typeof p.title!=='string' || p.title.length>120 || !p.board || !positive(p.board.width) || !positive(p.board.height) || p.board.width>500 || p.board.height>500 || !p.matrix || !['COL2ROW','ROW2COL'].includes(p.matrix.diodeDirection) || !Array.isArray(p.switches) || p.switches.length<1 || p.switches.length>100 || !Array.isArray(p.mcu?.pins) || p.mcu.pins.length>40 || !Array.isArray(p.keepouts) || p.keepouts.length>100 || !p.scoring) throw Error('Invalid puzzle structure')
-  if (!Number.isInteger(p.matrix.rows) || !Number.isInteger(p.matrix.cols) || p.matrix.rows<1 || p.matrix.cols<1 || !rotations.includes(p.northRotation)) throw Error('Invalid matrix')
+  if (!Number.isInteger(p.matrix.rows) || !Number.isInteger(p.matrix.cols) || p.matrix.rows<1 || p.matrix.cols<1) throw Error('Invalid matrix')
   const ids=new Set<string>()
   for (const s of p.switches) {
     if (!s.id || ids.has(s.id) || !rotations.includes(s.rotation) || !Number.isInteger(s.row) || !Number.isInteger(s.col) || s.row<0 || s.row>=p.matrix.rows || s.col<0 || s.col>=p.matrix.cols || !inside(p,{x:s.x-7,y:s.y-7}) || !inside(p,{x:s.x+7,y:s.y+7})) throw Error('Invalid switch')
@@ -22,7 +22,8 @@ export function validatePuzzle(input:unknown):Puzzle {
   for(let i=0;i<p.matrix.rows;i++) if(!roles.has(`ROW${i}`)) throw Error('Missing row MCU pin')
   for(let i=0;i<p.matrix.cols;i++) if(!roles.has(`COL${i}`)) throw Error('Missing col MCU pin')
   for(const k of p.keepouts) if(!k.id || k.type!=='rect' || !positive(k.width) || !positive(k.height) || !finite(k.x,k.y) || !inside(p,{x:k.x,y:k.y}) || !inside(p,{x:k.x+k.width,y:k.y+k.height})) throw Error('Invalid keepout')
-  if(!finite(p.scoring.base,p.scoring.connectionError,p.scoring.keepoutViolation,p.scoring.northSwitch,p.scoring.via))throw Error('Invalid scoring')
+  if(!Number.isFinite(p.scoring.routeLength))(p.scoring as Puzzle['scoring']).routeLength=-.1
+  if(!finite(p.scoring.base,p.scoring.connectionError,p.scoring.keepoutViolation,p.scoring.routeLength,p.scoring.via))throw Error('Invalid scoring')
   return p
 }
 export function inside(p:Puzzle,pt:Point){return pt.x>=0&&pt.y>=0&&pt.x<=p.board.width&&pt.y<=p.board.height}

@@ -1,7 +1,6 @@
 {
   "id":"day001","title":"First Route","board":{"width":128,"height":84},
   "matrix":{"rows":2,"cols":3,"diodeDirection":"COL2ROW"},
-  "northRotation":0,
   "switches":[
     {"id":"SW1","x":19.05,"y":19.05,"rotation":90,"row":0,"col":0},
     {"id":"SW2","x":38.1,"y":19.05,"rotation":90,"row":0,"col":1},
@@ -15,5 +14,5 @@
     {"number":3,"role":"COL0"},{"number":4,"role":"COL1"},{"number":5,"role":"COL2"}
   ]},
   "keepouts":[{"id":"KO1","type":"rect","x":38.1,"y":33.3375,"width":38.1,"height":9.525}],
-  "scoring":{"base":100,"connectionError":-10,"keepoutViolation":-5,"northSwitch":-3,"via":-1}
+  "scoring":{"base":100,"connectionError":-10,"keepoutViolation":-5,"routeLength":-0.1,"via":-1}
 }
