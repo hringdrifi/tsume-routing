@@ -34,6 +34,7 @@ export default function App(){
   const [editorOpen,setEditorOpen]=useState(false)
   const [view,setView]=useState({x:0,y:0,w:puzzle.board.width,h:puzzle.board.height})
   const svg=useRef<SVGSVGElement>(null),drag=useRef<Point|null>(null),seq=useRef(0)
+  const touchPan=useRef<{pointerId:number;point:Point;moved:boolean}|null>(null)
   const diodeDrag=useRef<{switchId:string;start:Point;cursor:Point;position:Point;pointerId:number;moved:boolean}|null>(null)
   const suppressDragClick=useRef(false)
   const previewBoard=useMemo(()=>draggedDiode?{...board,diodes:board.diodes.map(d=>d.switchId===draggedDiode.switchId?{...d,position:draggedDiode.position}:d)}:board,[board,draggedDiode])
@@ -99,6 +100,28 @@ export default function App(){
     setNotice(`${moving.switchId} ダイオードを移動`)
   }
   const cancelDiodeDrag=()=>{const moving=diodeDrag.current;if(moving&&svg.current?.hasPointerCapture(moving.pointerId))svg.current.releasePointerCapture(moving.pointerId);diodeDrag.current=null;setDraggedDiode(null)}
+  const startTouchPan=(e:React.PointerEvent<SVGSVGElement>)=>{
+    if(e.pointerType!=='touch'||diodeDrag.current)return
+    const target=e.target as Element
+    if(target.closest('.pad-group,.diode,.switch,.trace.existing'))return
+    touchPan.current={pointerId:e.pointerId,point:rawPt(e),moved:false}
+    e.currentTarget.setPointerCapture(e.pointerId)
+  }
+  const moveTouchPan=(e:React.PointerEvent<SVGSVGElement>)=>{
+    const pan=touchPan.current
+    if(!pan||pan.pointerId!==e.pointerId)return
+    const point=rawPt(e),dx=point.x-pan.point.x,dy=point.y-pan.point.y
+    if(Math.abs(dx)>.15||Math.abs(dy)>.15)pan.moved=true
+    pan.point=point
+    setView(v=>({...v,x:v.x-dx,y:v.y-dy}))
+  }
+  const endTouchPan=(e:React.PointerEvent<SVGSVGElement>)=>{
+    const pan=touchPan.current
+    if(!pan||pan.pointerId!==e.pointerId)return
+    touchPan.current=null
+    if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId)
+    if(pan.moved){suppressDragClick.current=true;window.setTimeout(()=>{suppressDragClick.current=false},0)}
+  }
   const finish=(target:Point)=>{
     if(!draft)return
     const tail=draft[draft.length-1],end=asNodes(tail,target),nodes=[...draft,...end]
@@ -179,7 +202,7 @@ export default function App(){
   return <div className="app"><header><div className="brand"><span className="brand-mark">◈</span><div><strong>詰配線</strong><small>TSUME ROUTING <b>/</b> A KEYBOARD PCB PUZZLE</small></div></div><div className="header-right"><button className="open-editor" onClick={()=>setEditorOpen(true)}>問題を作る</button><span className="day">{puzzle.id.toUpperCase()}</span><span className="score">SCORE <b>{checked.score}</b></span></div></header>
     <main><section className="workspace"><div className="board-bar"><span><i className="live-dot"/> PCB EDITOR <em>{puzzle.board.width} × {puzzle.board.height} mm</em></span><div className="grid-control">GRID 1/48u ({gridStep(48).toFixed(4)} mm)<b>·</b> 2 LAYERS</div></div>
       <div className="canvas-toolbar" role="toolbar" aria-label="盤面の操作ツール"><span className="toolbar-label">操作</span><button className={tool==='route'?'active':''} onClick={()=>chooseTool('route')}><b>⌁</b> 配線</button><button onClick={rotateSelected} disabled={!selected&&!selectedSwitch}><b>↻</b> 回転 <kbd>R</kbd></button><button className={tool==='delete'?'active':''} onClick={()=>chooseTool('delete')}><b>⌫</b> 削除</button><span className="toolbar-help">{draft?'既存配線をクリックして接続できます':selectedSwitch?`${selectedSwitch} スイッチを選択中`:selected?`${selected} ダイオードを選択中`:'パッドまたは既存配線から開始'}</span></div>
-      <div className="canvas-wrap"><svg ref={svg} viewBox={`${view.x-3} ${view.y-3} ${view.w+6} ${view.h+6}`} onMouseMove={e=>{if(drag.current){const p=pt(e),dx=p.x-drag.current.x,dy=p.y-drag.current.y;setView(v=>({...v,x:v.x-dx,y:v.y-dy}));return}setCursor(pt(e))}} onMouseDown={e=>{if(e.button===1){e.preventDefault();drag.current=pt(e)}}} onMouseUp={()=>drag.current=null} onMouseLeave={()=>drag.current=null} onPointerMove={moveDiodeDrag} onPointerUp={endDiodeDrag} onPointerCancel={cancelDiodeDrag} onClick={onBoardClick}>
+      <div className="canvas-wrap"><svg ref={svg} viewBox={`${view.x-3} ${view.y-3} ${view.w+6} ${view.h+6}`} onMouseMove={e=>{if(drag.current){const p=pt(e),dx=p.x-drag.current.x,dy=p.y-drag.current.y;setView(v=>({...v,x:v.x-dx,y:v.y-dy}));return}setCursor(pt(e))}} onMouseDown={e=>{if(e.button===1){e.preventDefault();drag.current=pt(e)}}} onMouseUp={()=>drag.current=null} onMouseLeave={()=>drag.current=null} onPointerDown={startTouchPan} onPointerMove={e=>{moveDiodeDrag(e);moveTouchPan(e)}} onPointerUp={e=>{endDiodeDrag(e);endTouchPan(e)}} onPointerCancel={e=>{cancelDiodeDrag();endTouchPan(e)}} onClick={onBoardClick}>
         <defs><pattern id="grid-major" width={KEY_UNIT_MM} height={KEY_UNIT_MM} patternUnits="userSpaceOnUse"><circle cx="0" cy="0" r=".22" fill="var(--grid-dot)"/></pattern><pattern id="grid-minor" width={gridStep(48)} height={gridStep(48)} patternUnits="userSpaceOnUse"><circle cx="0" cy="0" r=".08" fill="var(--grid-dot)"/></pattern></defs>
         <rect x="0" y="0" width={puzzle.board.width} height={puzzle.board.height} rx="2" className="pcb"/>{view.w<65&&<rect x="0" y="0" width={puzzle.board.width} height={puzzle.board.height} rx="2" fill="url(#grid-minor)"/>}<rect x="0" y="0" width={puzzle.board.width} height={puzzle.board.height} rx="2" fill="url(#grid-major)"/>
         {puzzle.keepouts.map(k=><g key={k.id}><rect className="keepout" x={k.x} y={k.y} width={k.width} height={k.height}/><text className="keepout-text" x={k.x+k.width/2} y={k.y+k.height/2}>KEEP OUT</text></g>)}
@@ -192,7 +215,7 @@ export default function App(){
         {allPads.map(pad=><g key={pad.id} className="pad-group" onClick={e=>onPad(pad,e)}><circle className={`pad ${pad.kind}`} cx={pad.x} cy={pad.y} r={pad.kind==='switch'?MX_3PIN.copperRadius:1.25}/>{pad.kind==='switch'&&<circle className="pad-drill" cx={pad.x} cy={pad.y} r={MX_3PIN.pinDrillRadius}/>}<circle className="pad-hit" cx={pad.x} cy={pad.y} r={pad.kind==='switch'?2.4:2.8}/><title>{pad.label}</title></g>)}
         {puzzle.mcu.pins.map((pin,i)=><text key={pin.number} className="mcu-pin-label" x={puzzle.mcu.x+4} y={puzzle.mcu.y-8+i*4}>{pin.role}</text>)}
         {result&&checked.issues.map((issue,i)=><g key={i}><circle className={`issue ${issue.fatal?'fatal':'warning'}`} cx={issue.point.x} cy={issue.point.y} r="3"/><text className="issue-mark" x={issue.point.x} y={issue.point.y+.8}>!</text></g>)}
-      </svg><div className="canvas-hint">ホイール: ズーム <span>·</span> 中ボタン: パン <span>·</span> Esc: 中断</div></div>
+      </svg><div className="canvas-hint"><span className="desktop-hint">ホイール: ズーム <span>·</span> 中ボタン: パン</span><span className="touch-hint">1本指: パン <span>·</span> タップ: 操作</span> <span>·</span> Esc: 中断</div></div>
       <div className="status"><span className="status-led"/>{notice}<span className="coords">{cursor?`${cursor.x}, ${cursor.y} mm`:''}</span></div>
     </section>
     <aside><div className="panel-title">WORKBENCH <span>{puzzle.id.toUpperCase()}</span></div><h2>{puzzle.title}</h2><p className="panel-intro">{puzzle.switches.length}つのキーを{puzzle.matrix.rows}×{puzzle.matrix.cols}の行列へ。配置済みのダイオードを調整し、MCUの{puzzle.mcu.pins.length}本のピンまで配線してください。点線は未接続のラッツネストです。</p>{dayNumber>0&&<div className="daily-nav"><button disabled={dayNumber<=1} onClick={()=>navigateDay(dayNumber-1)}>← 前の問題</button><button onClick={()=>navigateDay(todayNumber())}>今日の問題</button><button disabled={dayNumber>=todayNumber()} onClick={()=>navigateDay(dayNumber+1)}>次の問題 →</button></div>}
