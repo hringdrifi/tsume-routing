@@ -5,8 +5,8 @@ import type {Trace} from './model'
 const trace=(id:string,points:[number,number][]):Trace=>({id,nodes:points.map(([x,y])=>({x,y,layer:'F.Cu'}))})
 
 it('replaces an older route between the same pads, including reverse direction',()=>{
-  const old=trace('old',[[1,1],[2,1],[3,3]])
-  const other=trace('branch',[[2,1],[5,5]])
+  const old=trace('old',[[1,1],[3,3]])
+  const other=trace('other',[[2,1],[5,5]])
   const next=trace('new',[[3,3],[3,1],[1,1]])
   expect(replaceRoute([old,other],next)).toEqual({traces:[other,next],replaced:1})
 })
@@ -15,4 +15,19 @@ it('keeps routes with different endpoints',()=>{
   const old=trace('old',[[1,1],[3,3]])
   const next=trace('new',[[1,1],[4,4]])
   expect(replaceRoute([old],next)).toEqual({traces:[old,next],replaced:0})
+})
+
+it('replaces a branch route when its source and destination traces match',()=>{
+  const source=trace('source',[[0,0],[10,0]])
+  const destination=trace('destination',[[20,0],[20,10]])
+  const old=trace('old',[[5,0],[20,5]])
+  const next=trace('new',[[7,0],[20,8]])
+  expect(replaceRoute([source,destination,old],next)).toEqual({traces:[source,destination,next],replaced:1})
+})
+
+it('keeps a route that has an attached branch',()=>{
+  const old=trace('old',[[1,1],[2,1],[3,3]])
+  const branch=trace('branch',[[2,1],[5,5]])
+  const next=trace('new',[[3,3],[3,1],[1,1]])
+  expect(replaceRoute([old,branch],next)).toEqual({traces:[old,branch,next],replaced:0})
 })
