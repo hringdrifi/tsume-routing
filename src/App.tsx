@@ -14,6 +14,9 @@ import {ratsnest} from './lib/ratsnest'
 import {compactTraces,replaceRoute} from './lib/traces'
 
 const other=(l:Layer):Layer=>l==='F.Cu'?'B.Cu':'F.Cu'
+const ROUTING_GRID=24 as const
+const MIN_VIEW_WIDTH=28
+const MIN_VIEW_HEIGHT=19
 const asNodes=(from:RouteNode,to:Point):RouteNode[]=>snapPath(from,to).filter(p=>!near(p,from)).map(p=>({...p,layer:from.layer}))
 const closestPointOnSegment=(point:Point,a:Point,b:Point):Point=>{
   const dx=b.x-a.x,dy=b.y-a.y,span=dx*dx+dy*dy
@@ -54,8 +57,8 @@ export default function App(){
       const focus=point.matrixTransform(canvas.getScreenCTM()!.inverse())
       const factor=event.deltaY>0?1.12:0.88
       setView(current=>{
-        const width=Math.max(45,Math.min(200,current.w*factor))
-        const height=Math.max(30,Math.min(135,current.h*factor))
+        const width=Math.max(MIN_VIEW_WIDTH,Math.min(200,current.w*factor))
+        const height=Math.max(MIN_VIEW_HEIGHT,Math.min(135,current.h*factor))
         const fx=(focus.x-current.x+3)/(current.w+6)
         const fy=(focus.y-current.y+3)/(current.h+6)
         return {x:focus.x-fx*(width+6)+3,y:focus.y-fy*(height+6)+3,w:width,h:height}
@@ -68,10 +71,10 @@ export default function App(){
   const commit=useCallback((next:BoardState)=>{setPast(p=>[...p,board]);setFuture([]);setBoard(next);setResult(false)},[board])
   const undo=useCallback(()=>{if(!past.length)return;setFuture(f=>[board,...f]);setBoard(past[past.length-1]);setPast(p=>p.slice(0,-1));setDraft(null);setResult(false)},[board,past])
   const redo=useCallback(()=>{if(!future.length)return;setPast(p=>[...p,board]);setBoard(future[0]);setFuture(f=>f.slice(1));setDraft(null);setResult(false)},[board,future])
-  const pt=(e:{clientX:number;clientY:number}):Point=>{const p=svg.current!.createSVGPoint();p.x=e.clientX;p.y=e.clientY;const q=p.matrixTransform(svg.current!.getScreenCTM()!.inverse());return {x:grid(q.x,48),y:grid(q.y,48)}}
+  const pt=(e:{clientX:number;clientY:number}):Point=>{const p=svg.current!.createSVGPoint();p.x=e.clientX;p.y=e.clientY;const q=p.matrixTransform(svg.current!.getScreenCTM()!.inverse());return {x:grid(q.x,ROUTING_GRID),y:grid(q.y,ROUTING_GRID)}}
   const rawPt=(e:{clientX:number;clientY:number}):Point=>{const p=svg.current!.createSVGPoint();p.x=e.clientX;p.y=e.clientY;const q=p.matrixTransform(svg.current!.getScreenCTM()!.inverse());return {x:q.x,y:q.y}}
   const safeDiodePosition=(pos:Point):Point=>({x:Math.max(4,Math.min(puzzle.board.width-4,pos.x)),y:Math.max(4,Math.min(puzzle.board.height-4,pos.y))})
-  const diodePosition=(moving:NonNullable<typeof diodeDrag.current>,e:{clientX:number;clientY:number}):Point=>{const at=pt(e);return safeDiodePosition({x:grid(moving.start.x+at.x-moving.cursor.x,48),y:grid(moving.start.y+at.y-moving.cursor.y,48)})}
+  const diodePosition=(moving:NonNullable<typeof diodeDrag.current>,e:{clientX:number;clientY:number}):Point=>{const at=pt(e);return safeDiodePosition({x:grid(moving.start.x+at.x-moving.cursor.x,ROUTING_GRID),y:grid(moving.start.y+at.y-moving.cursor.y,ROUTING_GRID)})}
   const startDiodeDrag=(d:BoardState['diodes'][number],e:React.PointerEvent<SVGGElement>)=>{
     if(e.button!==0||!d.position)return
     e.preventDefault();e.stopPropagation()
@@ -128,7 +131,7 @@ export default function App(){
       touchPan.current=null
       suppressDragClick.current=true
       setView(current=>{
-        const width=Math.max(45,Math.min(200,current.w*factor)),height=Math.max(30,Math.min(135,current.h*factor))
+        const width=Math.max(MIN_VIEW_WIDTH,Math.min(200,current.w*factor)),height=Math.max(MIN_VIEW_HEIGHT,Math.min(135,current.h*factor))
         const focus={x:current.x-3+(center.x-bounds.left)*(current.w+6)/bounds.width,y:current.y-3+(center.y-bounds.top)*(current.h+6)/bounds.height}
         const fx=(focus.x-current.x+3)/(current.w+6),fy=(focus.y-current.y+3)/(current.h+6)
         return {x:focus.x-fx*(width+6)+3,y:focus.y-fy*(height+6)+3,w:width,h:height}
@@ -235,10 +238,10 @@ export default function App(){
   const dayNumber=Number(puzzle.id.match(/^day(\d+)$/)?.[1]??0)
   const navigateDay=(n:number)=>{location.href=`${import.meta.env.BASE_URL}?puzzle=day${String(n).padStart(3,'0')}`}
   return <div className="app"><header><div className="brand"><span className="brand-mark">◈</span><div><strong>詰配線</strong><small>TSUME ROUTING <b>/</b> A KEYBOARD PCB PUZZLE</small></div></div><div className="header-right"><button className="open-editor" onClick={()=>setEditorOpen(true)}>問題を作る</button><span className="day">{puzzle.id.toUpperCase()}</span><span className="score">SCORE <b>{checked.score}</b></span></div></header>
-    <main><section className="workspace"><div className="board-bar"><span><i className="live-dot"/> PCB EDITOR <em>{puzzle.board.width} × {puzzle.board.height} mm</em></span><div className="grid-control">GRID 1/48u ({gridStep(48).toFixed(4)} mm)<b>·</b> 2 LAYERS</div></div>
+    <main><section className="workspace"><div className="board-bar"><span><i className="live-dot"/> PCB EDITOR <em>{puzzle.board.width} × {puzzle.board.height} mm</em></span><div className="grid-control">GRID 1/{ROUTING_GRID}u ({gridStep(ROUTING_GRID).toFixed(4)} mm)<b>·</b> 2 LAYERS</div></div>
       <div className="canvas-toolbar" role="toolbar" aria-label="盤面の操作ツール"><span className="toolbar-label">操作</span><button className={tool==='route'?'active':''} onClick={()=>chooseTool('route')}><b>⌁</b> 配線</button><button onClick={rotateSelected} disabled={!selected&&!selectedSwitch}><b>↻</b> 回転 <kbd>R</kbd></button><button onClick={()=>changeLayer()}><b>⊙</b> VIA <kbd>V</kbd></button><button className={tool==='delete'?'active':''} onClick={()=>chooseTool('delete')}><b>⌫</b> 削除</button><span className="toolbar-help">{draft?'既存配線をクリックして接続できます':selectedSwitch?`${selectedSwitch} スイッチを選択中`:selected?`${selected} ダイオードを選択中`:'パッドまたは既存配線から開始'}</span></div>
       <div className="canvas-wrap"><svg ref={svg} viewBox={`${view.x-3} ${view.y-3} ${view.w+6} ${view.h+6}`} onMouseMove={e=>{if(drag.current){const p=pt(e),dx=p.x-drag.current.x,dy=p.y-drag.current.y;setView(v=>({...v,x:v.x-dx,y:v.y-dy}));return}setCursor(pt(e))}} onMouseDown={e=>{if(e.button===1){e.preventDefault();drag.current=pt(e)}}} onMouseUp={()=>drag.current=null} onMouseLeave={()=>drag.current=null} onPointerDown={startTouchPan} onPointerMove={e=>{moveDiodeDrag(e);moveTouchPan(e)}} onPointerUp={e=>{endDiodeDrag(e);endTouchPan(e)}} onPointerCancel={e=>{cancelDiodeDrag();endTouchPan(e)}} onClick={onBoardClick}>
-        <defs><pattern id="grid-major" width={KEY_UNIT_MM} height={KEY_UNIT_MM} patternUnits="userSpaceOnUse"><circle cx="0" cy="0" r=".22" fill="var(--grid-dot)"/></pattern><pattern id="grid-minor" width={gridStep(48)} height={gridStep(48)} patternUnits="userSpaceOnUse"><circle cx="0" cy="0" r=".08" fill="var(--grid-dot)"/></pattern></defs>
+        <defs><pattern id="grid-major" width={KEY_UNIT_MM} height={KEY_UNIT_MM} patternUnits="userSpaceOnUse"><circle cx="0" cy="0" r=".22" fill="var(--grid-dot)"/></pattern><pattern id="grid-minor" width={gridStep(ROUTING_GRID)} height={gridStep(ROUTING_GRID)} patternUnits="userSpaceOnUse"><circle cx="0" cy="0" r=".08" fill="var(--grid-dot)"/></pattern></defs>
         <rect x="0" y="0" width={puzzle.board.width} height={puzzle.board.height} rx="2" className="pcb"/>{view.w<65&&<rect x="0" y="0" width={puzzle.board.width} height={puzzle.board.height} rx="2" fill="url(#grid-minor)"/>}<rect x="0" y="0" width={puzzle.board.width} height={puzzle.board.height} rx="2" fill="url(#grid-major)"/>
         {puzzle.keepouts.map(k=><g key={k.id}><rect className="keepout" x={k.x} y={k.y} width={k.width} height={k.height}/><text className="keepout-text" x={k.x+k.width/2} y={k.y+k.height/2}>KEEP OUT</text></g>)}
         {puzzle.switches.map(s=>{const rotation=board.switchRotations[s.id]??s.rotation;return <g className="switch-group" key={s.id} transform={`translate(${s.x} ${s.y}) rotate(${rotation})`} onClick={e=>{if(tool==='route'&&draft)return;e.stopPropagation();setSelected(null);setSelectedSwitch(s.id);setDraft(null);setNotice(`${s.id} スイッチを選択 · Rで回転`)}}><rect className={`switch ${selectedSwitch===s.id?'selected':''}`} x={-MX_3PIN.housingHalf} y={-MX_3PIN.housingHalf} width={MX_3PIN.housingHalf*2} height={MX_3PIN.housingHalf*2} rx="1.5"/><circle className="switch-hole-ring" r={MX_3PIN.centerHoleRadius+.45}/><circle className="switch-hole" r={MX_3PIN.centerHoleRadius}/><text className="part-label" y="-9" transform={`rotate(${-rotation})`}>{s.id}</text></g>})}
