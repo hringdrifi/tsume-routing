@@ -9,7 +9,7 @@ it('rejects malformed shared content',()=>{
   expect(()=>decodePuzzle('invalid-data')).toThrow()
 })
 it('keeps unreleased daily puzzles behind the debug URL option',()=>{
-  const now=new Date('2026-09-20T15:00:00Z')
+  const now=new Date('2026-09-21T15:00:00Z')
   expect(()=>puzzleFromLocation('https://example.test/?puzzle=day002',now)).toThrow('まだ公開')
   expect(puzzleFromLocation('https://example.test/?debug=1&puzzle=day002',now).id).toBe('day002')
 })
