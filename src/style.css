@@ -16,3 +16,5 @@ aside .history-actions{margin:0 0 12px}.history-actions+.daily-nav{margin-bottom
 @media(max-width:800px){.toolbar-divider{display:none}}
 .share-x{width:100%;margin-top:18px;background:#111;color:#fff;border:1px solid #5b6b68;padding:12px;font-weight:700}.share-x:hover{border-color:#d9ad67;color:#f5d294}.share-x+.continue{margin-top:8px}
 .copy-wiring{width:100%;margin-top:18px;background:#1a3535;color:#e0eade;border:1px solid #4e6b60;padding:12px;font-weight:700}.copy-wiring:hover{border-color:#e1b571}.copy-wiring+.share-x{margin-top:8px}
+
+.editor-preview svg{touch-action:none}.editor-preview .editor-switch,.editor-preview .editor-mcu,.editor-preview .keepout,.editor-diode{cursor:grab}.editor-preview svg:active{cursor:grabbing}.editor-diode{fill:#3d3e37;stroke:#e8c47e;stroke-width:.4}

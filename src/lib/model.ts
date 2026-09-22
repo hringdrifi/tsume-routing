@@ -9,6 +9,7 @@ export type Puzzle = {
   /** @deprecated Retained only so previously shared puzzle JSON remains editable. */
   northRotation?:Rotation;
   switches:{id:string;x:number;y:number;rotation:Rotation;row:number;col:number}[];
+  diodes?:Diode[];
   mcu:{x:number;y:number;pins:{number:number;role:string}[]};
   keepouts:{id:string;type:'rect';x:number;y:number;width:number;height:number}[];
   scoring:{base:number;connectionError:number;keepoutViolation:number;routeLength:number;via:number};
@@ -21,7 +22,7 @@ export type Pad = Point & {id:string;label:string;net:string;kind:'switch'|'diod
 export type Issue = {kind:'disconnected'|'short'|'keepout'|'diode';message:string;point:Point;fatal:boolean}
 export type Result = {clear:boolean;score:number;viaCount:number;length:number;issues:Issue[];missing:number;shorts:number;keepout:number}
 function initialDiodes(p:Puzzle):Diode[]{
-  const placed:Point[]=[]
+  const placed:Point[]=p.diodes?.flatMap(d=>d.position?[d.position]:[])??[]
   const snapPosition=(point:Point):Point=>{
     const step=gridStep(ROUTING_GRID)
     return {
@@ -30,6 +31,8 @@ function initialDiodes(p:Puzzle):Diode[]{
     }
   }
   return p.switches.map(s=>{
+    const configured=p.diodes?.find(d=>d.switchId===s.id)
+    if(configured?.position)return {...configured,position:{...configured.position}}
     const towardCenter=s.y<p.board.height/2?1:-1
     const offsets=[
       {x:0,y:10*towardCenter},{x:0,y:-10*towardCenter},

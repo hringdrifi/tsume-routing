@@ -15,6 +15,14 @@ export function validatePuzzle(input:unknown):Puzzle {
     if (!s.id || ids.has(s.id) || !rotations.includes(s.rotation) || !Number.isInteger(s.row) || !Number.isInteger(s.col) || s.row<0 || s.row>=p.matrix.rows || s.col<0 || s.col>=p.matrix.cols || !inside(p,{x:s.x-7,y:s.y-7}) || !inside(p,{x:s.x+7,y:s.y+7})) throw Error('Invalid switch')
     ids.add(s.id)
   }
+  if(p.diodes!==undefined){
+    if(!Array.isArray(p.diodes)||p.diodes.length>p.switches.length)throw Error('Invalid diodes')
+    const diodeIds=new Set<string>()
+    for(const d of p.diodes){
+      if(!d||!ids.has(d.switchId)||diodeIds.has(d.switchId)||!rotations.includes(d.rotation)||!d.position||!inside(p,{x:d.position.x-4,y:d.position.y-4})||!inside(p,{x:d.position.x+4,y:d.position.y+4}))throw Error('Invalid diode')
+      diodeIds.add(d.switchId)
+    }
+  }
   const roles=new Set<string>()
   if(!inside(p,{x:p.mcu.x-7,y:p.mcu.y-13})||!inside(p,{x:p.mcu.x+12,y:p.mcu.y+13})||!inside(p,{x:p.mcu.x-7,y:p.mcu.y-8+(p.mcu.pins.length-1)*4}))throw Error('Invalid MCU position')
   const pinNumbers=new Set<number>()
