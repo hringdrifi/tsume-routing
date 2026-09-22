@@ -204,10 +204,21 @@ export default function App(){
     }
   }
   useEffect(()=>{const handler=(e:KeyboardEvent)=>{
-    if(editorOpen||e.target instanceof HTMLInputElement||e.target instanceof HTMLTextAreaElement)return
+    if(editorOpen||e.target instanceof HTMLInputElement||e.target instanceof HTMLTextAreaElement||e.target instanceof HTMLSelectElement||(e.target instanceof HTMLElement&&e.target.isContentEditable))return
     if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?redo():undo();return}
     if(e.key==='Escape'){cancelDiodeDrag();setDraft(null);setSelected(null);setSelectedSwitch(null);setNotice('操作を中断');return}
     if(e.key==='Backspace'&&draft){e.preventDefault();setDraft(draft.length>1?draft.slice(0,-1):null);return}
+    const direction=({ArrowUp:{x:0,y:-1},ArrowDown:{x:0,y:1},ArrowLeft:{x:-1,y:0},ArrowRight:{x:1,y:0}} as Record<string,Point>)[e.key]
+    if(direction&&selected){
+      const diode=board.diodes.find(d=>d.switchId===selected)
+      if(!diode?.position)return
+      e.preventDefault();cancelDiodeDrag()
+      const step=gridStep(ROUTING_GRID),position=safeDiodePosition({x:grid(diode.position.x+direction.x*step,ROUTING_GRID),y:grid(diode.position.y+direction.y*step,ROUTING_GRID)})
+      if(near(position,diode.position))return
+      commit({...board,diodes:board.diodes.map(d=>d.switchId===selected?{...d,position}:d)})
+      setDraft(null);setNotice(`${selected} ダイオードを矢印キーで移動`)
+      return
+    }
     if(e.key.toLowerCase()==='v'){e.preventDefault();changeLayer()}
     if(e.key.toLowerCase()==='r'&&(selected||selectedSwitch)){e.preventDefault();rotateSelected()}
   };window.addEventListener('keydown',handler);return()=>window.removeEventListener('keydown',handler)})
@@ -285,7 +296,7 @@ export default function App(){
         <rect x="0" y="0" width={puzzle.board.width} height={puzzle.board.height} rx="2" className="pcb"/>{view.w<65&&<rect x="0" y="0" width={puzzle.board.width} height={puzzle.board.height} rx="2" fill="url(#grid-minor)"/>}<rect x="0" y="0" width={puzzle.board.width} height={puzzle.board.height} rx="2" fill="url(#grid-major)"/>
         {puzzle.keepouts.map(k=><g key={k.id}><rect className="keepout" x={k.x} y={k.y} width={k.width} height={k.height}/><text className="keepout-text" x={k.x+k.width/2} y={k.y+k.height/2}>KEEP OUT</text></g>)}
         {puzzle.switches.map(s=>{const rotation=board.switchRotations[s.id]??s.rotation;return <g className="switch-group" key={s.id} transform={`translate(${s.x} ${s.y}) rotate(${rotation})`} onClick={e=>{if(tool==='route'&&draft)return;e.stopPropagation();setSelected(null);setSelectedSwitch(s.id);setDraft(null);setNotice(`${s.id} スイッチを選択 · Rで回転`)}}><rect className={`switch ${selectedSwitch===s.id?'selected':''}`} x={-MX_3PIN.housingHalf} y={-MX_3PIN.housingHalf} width={MX_3PIN.housingHalf*2} height={MX_3PIN.housingHalf*2} rx="1.5"/><circle className="switch-hole-ring" r={MX_3PIN.centerHoleRadius+.45}/><circle className="switch-hole" r={MX_3PIN.centerHoleRadius}/><text className="part-label" y="-9" transform={`rotate(${-rotation})`}>{s.id}</text></g>})}
-        {previewBoard.diodes.map(d=><g key={d.switchId} transform={`translate(${d.position!.x} ${d.position!.y}) rotate(${d.rotation})`} onPointerDown={e=>startDiodeDrag(d,e)} onClick={e=>{e.stopPropagation();if(suppressDragClick.current){suppressDragClick.current=false;return}setSelectedSwitch(null);setSelected(d.switchId);setDraft(null);setNotice(`${d.switchId} ダイオードを選択 · ドラッグで移動 · Rで回転`)}}><rect className={`diode ${selected===d.switchId?'selected':''} ${draggedDiode?.switchId===d.switchId?'dragging':''}`} x="-3.5" y="-1.6" width="7" height="3.2" rx=".5"/><path className="diode-symbol" d="M-1 -1 L1 0 L-1 1 Z M1 -1 L1 1"/><text className="diode-label" x="0" y="-3" transform={`rotate(${-d.rotation})`}>{d.switchId} D</text></g>)}
+        {previewBoard.diodes.map(d=><g key={d.switchId} transform={`translate(${d.position!.x} ${d.position!.y}) rotate(${d.rotation})`} onPointerDown={e=>startDiodeDrag(d,e)} onClick={e=>{e.stopPropagation();if(suppressDragClick.current){suppressDragClick.current=false;return}setSelectedSwitch(null);setSelected(d.switchId);setDraft(null);setNotice(`${d.switchId} ダイオードを選択 · ドラッグまたは矢印キーで移動 · Rで回転`)}}><rect className={`diode ${selected===d.switchId?'selected':''} ${draggedDiode?.switchId===d.switchId?'dragging':''}`} x="-3.5" y="-1.6" width="7" height="3.2" rx=".5"/><path className="diode-symbol" d="M-1 -1 L1 0 L-1 1 Z M1 -1 L1 1"/><text className="diode-label" x="0" y="-3" transform={`rotate(${-d.rotation})`}>{d.switchId} D</text></g>)}
         {airwires.map(w=><line key={`${w.net}:${w.from.id}:${w.to.id}`} className="airwire" x1={w.from.x} y1={w.from.y} x2={w.to.x} y2={w.to.y}/>)}
         <g transform={`translate(${puzzle.mcu.x} ${puzzle.mcu.y})`}><rect className="mcu" x="-4" y="-13" width="16" height="26" rx="1"/><text className="mcu-label" x="4" y="-15">MCU</text></g>
         {board.traces.map(t=><g key={t.id}>{routeLines(t.nodes,t.id,true)}{viaPoints(t.nodes).map((v,i)=><circle key={i} className="via" cx={v.x} cy={v.y} r=".8" pointerEvents="none"/>)}</g>)}
@@ -293,7 +304,7 @@ export default function App(){
         {allPads.map(pad=><g key={pad.id} className="pad-group" onClick={e=>onPad(pad,e)}><circle className={`pad ${pad.kind}`} cx={pad.x} cy={pad.y} r={pad.kind==='switch'?MX_3PIN.copperRadius:1.4}/>{pad.kind!=='diode'&&<circle className="pad-drill" cx={pad.x} cy={pad.y} r={pad.kind==='switch'?MX_3PIN.pinDrillRadius:.55}/>}<circle className="pad-hit" cx={pad.x} cy={pad.y} r={pad.kind==='switch'?2.4:2.8}/><title>{pad.label}</title></g>)}
         {puzzle.mcu.pins.map((pin,i)=><text key={pin.number} className="mcu-pin-label" x={puzzle.mcu.x+4} y={puzzle.mcu.y-8+i*4}>{pin.role}</text>)}
         {result&&checked.issues.map((issue,i)=><g key={i}><circle className={`issue ${issue.fatal?'fatal':'warning'}`} cx={issue.point.x} cy={issue.point.y} r="3"/><text className="issue-mark" x={issue.point.x} y={issue.point.y+.8}>!</text></g>)}
-      </svg><div className="canvas-hint"><span className="desktop-hint">ホイール: ズーム <span>·</span> 中ボタン: パン</span><span className="touch-hint">1本指: パン <span>·</span> 2本指: 拡大・縮小 <span>·</span> タップ: 操作</span> <span>·</span> Esc: 中断</div></div>
+      </svg><div className="canvas-hint"><span className="desktop-hint">ホイール: ズーム <span>·</span> 中ボタン: パン</span><span className="touch-hint">1本指: パン <span>·</span> 2本指: 拡大・縮小 <span>·</span> タップ: 操作</span> <span>·</span> 選択中のダイオード: 矢印キーで移動 <span>·</span> Esc: 中断</div></div>
       <div className="status"><span className="status-led"/>{notice}<span className="coords">{cursor?`${cursor.x}, ${cursor.y} mm`:''}</span></div>
     </section>
     <aside><div className="action-row history-actions"><button className="secondary" onClick={undo} disabled={!past.length}>↶ UNDO</button><button className="secondary" onClick={redo} disabled={!future.length}>↷ REDO</button></div>{dayNumber>0&&<div className="daily-nav"><button disabled={dayNumber<=1} onClick={()=>navigateDay(dayNumber-1)}>← 前の問題</button><button onClick={()=>navigateDay(todayNumber())}>今日の問題</button><button disabled={dayNumber>=latestDay} onClick={()=>navigateDay(dayNumber+1)}>次の問題 →</button></div>}
