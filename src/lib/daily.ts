@@ -37,6 +37,11 @@ const GENERATED_MATRICES=[
   {rows:3,cols:2},{rows:3,cols:3},{rows:4,cols:2},{rows:3,cols:4},{rows:4,cols:3},
 ] as const
 
+// Keep the later daily routes just as recognizable as the hand-crafted opening set.
+// Each ten-day run follows the matrix sequence above, while its prefix marks the run.
+const GENERATED_TITLE_PREFIXES=['Copper','Signal','Midnight','Spiral','Echo','Aurora','Vector','Orbit','Final'] as const
+const GENERATED_TITLE_FORMS=['Four Across','Five Across','Square Start','Twin Track','Eight Lane','High Six','Nine Grid','Twin Towers','Twelve Field','Twelve Weave'] as const
+
 const shuffleRoles=(rows:number,cols:number,seed:number):string[]=>{
   const roles=[...Array.from({length:rows},(_,index)=>`ROW${index}`),...Array.from({length:cols},(_,index)=>`COL${index}`)]
   let state=seed
@@ -62,7 +67,7 @@ const generatedDefinition=(number:number):DailyDefinition=>{
   const diodeDirection=seed%2?'ROW2COL':'COL2ROW'
   const firstY=12+(seed*11)%46,secondY=70+(seed*7)%30
   return {
-    title:`Pattern ${String(number).padStart(3,'0')}`,
+    title:`${GENERATED_TITLE_PREFIXES[Math.floor(seed/GENERATED_MATRICES.length)]} ${GENERATED_TITLE_FORMS[seed%GENERATED_MATRICES.length]}`,
     board:{width:172,height:132},
     matrix:{...shape,diodeDirection},
     keys,
